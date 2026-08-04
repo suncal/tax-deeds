@@ -1,0 +1,84 @@
+name: Refresh OTC tax-deed inventory
+
+on:
+  schedule:
+    - cron: '17 11 * * *'      # 11:17 UTC daily (~6:17am ET / 4:47pm IST)
+  workflow_dispatch:            # lets you trigger a refresh by hand
+  push:
+    branches: [main]
+    paths: ['scrapers/**', 'index.html', '.github/workflows/**']
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r scrapers/requirements.txt
+
+      - name: Scrape every source and rebuild data.json
+        run: python scrapers/build.py
+
+      - name: Sanity-check the output before publishing
+        run: |
+          python - <<'PY'
+          import json, sys
+          d = json.load(open('data.json'))
+          m = d['meta']
+          n = m['total']
+          print(f"{n:,} rows, {m['with_value']:,} with a market value, "
+                f"{m['jurisdictions']} jurisdictions")
+          for s in m['sources']:
+              print(f"  {s['name']}: {s['rows']} rows {s.get('error') or ''}")
+          # Refuse to publish an obviously broken scrape over a good one.
+          # Per-source floors are set well under normal yield so ordinary
+          # week-to-week churn passes but a collapsed feed does not.
+          FLOORS = {'Mississippi': 5000, 'Alabama': 9000, 'Texas': 120, 'Pennsylvania': 150}
+          bad = []
+          if n < 15000:
+              bad.append(f"total rows {n} < 15000")
+          if m['with_value'] < 4000:
+              bad.append(f"rows with a market value {m['with_value']} < 4000")
+          for s in m['sources']:
+              for key, floor in FLOORS.items():
+                  if s['name'].startswith(key) and s['rows'] < floor:
+                      bad.append(f"{key}: {s['rows']} rows < {floor}")
+          if bad:
+              sys.exit('FAIL — refusing to publish:\n  ' + '\n  '.join(bad))
+          print('sanity check passed')
+          PY
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name  "tax-deeds bot"
+          git config user.email "actions@github.com"
+          git add data.json
+          if git diff --staged --quiet; then
+            echo "no change in inventory"
+          else
+            git commit -m "data: refresh OTC inventory $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
