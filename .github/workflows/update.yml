@@ -76,9 +76,19 @@ jobs:
             git push
           fi
 
+      # Publish only what the site needs — uploading the repo root shipped
+      # .git and the scrapers, which bloated the artifact and made the Pages
+      # deploy flaky (it failed once on 2026-08-06 for exactly that reason).
+      - name: Stage the site
+        run: |
+          mkdir -p _site
+          cp index.html data.json _site/
+          echo "tax-deeds" > _site/.nojekyll
+          du -sh _site
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

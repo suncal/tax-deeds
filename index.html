@@ -1,573 +1,833 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OTC Tax Deed Finder — live US inventory</title>
 <meta name="description" content="Live over-the-counter US tax deed and tax-forfeited property inventory, scraped daily from state and county sources.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🏚️</text></svg>">
 <style>
 :root{
-  --bg:#0b0f14; --panel:#121821; --panel2:#182130; --line:#243040;
-  --ink:#e7edf5; --dim:#93a3b8; --dim2:#64748b;
-  --acc:#38bdf8; --good:#34d399; --warn:#fbbf24; --bad:#f87171; --vio:#a78bfa;
-  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --bg:#07090d; --bg2:#0b0f15; --panel:#10151d; --panel2:#161d27; --panel3:#1c2531;
+  --line:#212c3a; --line2:#2c3a4c;
+  --ink:#eaf0f7; --dim:#8fa0b5; --dim2:#5d6f85;
+  --acc:#4cc4f5; --acc2:#7aa2ff;
+  --good:#3ddc97; --warn:#fdc453; --bad:#ff7a7a; --vio:#b291ff;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+  --r:12px; --sh:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+html[data-theme=light]{
+  --bg:#f6f8fb; --bg2:#eef2f7; --panel:#fff; --panel2:#f3f6fa; --panel3:#e9eef5;
+  --line:#dde5ee; --line2:#c8d4e2;
+  --ink:#0f1922; --dim:#5b6b7d; --dim2:#8697a8;
+  --acc:#0a7ea4; --acc2:#3b5bdb;
+  --good:#0f9d63; --warn:#a9750a; --bad:#c73b3b; --vio:#6d4bc4;
+  --sh:0 1px 2px rgba(16,32,48,.06),0 8px 24px -14px rgba(16,32,48,.24);
 }
 *{box-sizing:border-box}
+html,body{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--ink);
-  font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif}
-a{color:var(--acc)}
-.wrap{max-width:1620px;margin:0 auto;padding:20px}
-h1{font-size:23px;margin:0 0 4px;letter-spacing:-.3px}
-h2{font-size:17px;margin:24px 0 10px}
-h3{font-size:14px;margin:16px 0 7px;color:var(--acc)}
-.sub{color:var(--dim);font-size:13px;margin:0}
-.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;
-  font-weight:600;white-space:nowrap}
-.p-good{background:rgba(52,211,153,.14);color:var(--good)}
-.p-warn{background:rgba(251,191,36,.14);color:var(--warn)}
-.p-bad{background:rgba(248,113,113,.14);color:var(--bad)}
-.p-dim{background:rgba(148,163,184,.14);color:var(--dim)}
-.p-acc{background:rgba(56,189,248,.14);color:var(--acc)}
-.p-vio{background:rgba(167,139,250,.14);color:var(--vio)}
+  font:14.5px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+a{color:var(--acc);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1560px;margin:0 auto;padding:0 22px 60px}
 
-.banner{background:linear-gradient(180deg,#1a2432,#141c27);border:1px solid var(--line);
-  border-left:3px solid var(--warn);border-radius:10px;padding:13px 16px;margin:14px 0}
-.banner b{color:var(--warn)}
-.banner.ok{border-left-color:var(--good)} .banner.ok b{color:var(--good)}
+/* ---------- top bar ---------- */
+.top{position:sticky;top:0;z-index:60;background:color-mix(in srgb,var(--bg) 86%,transparent);
+  backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.topin{max-width:1560px;margin:0 auto;padding:11px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.3px;font-size:15.5px}
+.brand .mark{width:26px;height:26px;border-radius:8px;flex:0 0 26px;
+  background:linear-gradient(140deg,var(--acc),var(--acc2));display:grid;place-items:center;
+  font-size:14px;color:#04121c}
+.livedot{width:7px;height:7px;border-radius:50%;background:var(--good);
+  box-shadow:0 0 0 0 color-mix(in srgb,var(--good) 60%,transparent);animation:pulse 2.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--good) 55%,transparent)}
+  70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+.nav a{padding:6px 11px;border-radius:8px;color:var(--dim);font-weight:600;font-size:13px;cursor:pointer}
+.nav a:hover{background:var(--panel2);color:var(--ink);text-decoration:none}
+.nav a.on{background:var(--panel3);color:var(--ink)}
+.iconbtn{background:var(--panel2);border:1px solid var(--line);color:var(--dim);width:32px;height:32px;
+  border-radius:9px;cursor:pointer;display:grid;place-items:center;font-size:14px;padding:0}
+.iconbtn:hover{color:var(--acc);border-color:var(--acc)}
 
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
-.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-.kpi .n{font-size:23px;font-weight:700;letter-spacing:-.5px;font-family:var(--mono)}
-.kpi .l{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin-top:3px}
+/* ---------- hero ---------- */
+.hero{padding:26px 0 6px}
+h1{font-size:27px;margin:0 0 6px;letter-spacing:-.7px;font-weight:750}
+.sub{color:var(--dim);font-size:14px;margin:0;max-width:760px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:10px;margin:20px 0 4px}
+.stat{background:linear-gradient(170deg,var(--panel),var(--bg2));border:1px solid var(--line);
+  border-radius:var(--r);padding:13px 15px;box-shadow:var(--sh)}
+.stat .n{font-size:24px;font-weight:750;letter-spacing:-.8px;font-family:var(--mono)}
+.stat .l{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.7px;margin-top:2px}
+.stat.hi .n{color:var(--good)}
 
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:20px 0 0;flex-wrap:wrap}
-.tab{padding:9px 14px;cursor:pointer;color:var(--dim);border-bottom:2px solid transparent;
-  font-weight:600;font-size:13px;user-select:none;white-space:nowrap}
-.tab:hover{color:var(--ink)}
-.tab.on{color:var(--acc);border-bottom-color:var(--acc)}
-.view{display:none;padding-top:16px}
-.view.on{display:block}
-
-.card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:15px 17px;margin:12px 0}
-.controls{display:flex;gap:13px;flex-wrap:wrap;align-items:flex-end}
-.f{display:flex;flex-direction:column;gap:4px}
-.f label{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px}
-input,select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
-  padding:7px 9px;border-radius:7px;font-size:13px;font-family:inherit}
-input[type=range]{padding:0;width:140px;accent-color:var(--acc)}
-input[type=number]{width:94px;font-family:var(--mono)}
-input[type=text]{width:200px}
-button{background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:7px 12px;
-  border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit}
-button:hover{border-color:var(--acc);color:var(--acc)}
-button.on{background:rgba(56,189,248,.16);border-color:var(--acc);color:var(--acc)}
-.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.seg button{border:0;border-radius:0;border-right:1px solid var(--line)}
-.seg button:last-child{border-right:0}
-
-table{width:100%;border-collapse:collapse;font-size:12.5px}
-th,td{padding:8px 9px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
-th{position:sticky;top:0;background:var(--panel2);color:var(--dim);font-size:10.5px;
-  text-transform:uppercase;letter-spacing:.5px;cursor:pointer;user-select:none;z-index:2;white-space:nowrap}
-th:hover{color:var(--acc)}
-tbody tr:hover{background:rgba(56,189,248,.05)}
-td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
-.tblwrap{overflow:auto;max-height:68vh;border:1px solid var(--line);border-radius:10px}
-.sm{color:var(--dim);font-size:11.5px;max-width:400px;line-height:1.4}
-.g{color:var(--good)} .r{color:var(--bad)} .w{color:var(--warn)} .d{color:var(--dim)}
-.note{color:var(--dim);font-size:12px;margin:8px 0}
-ul{margin:6px 0 6px 18px;padding:0} li{margin:5px 0}
+/* ---------- generic ---------- */
+h2{font-size:19px;margin:30px 0 12px;letter-spacing:-.35px}
+h3{font-size:14.5px;margin:0 0 8px;color:var(--acc);letter-spacing:-.1px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px 18px;margin:12px 0;box-shadow:var(--sh)}
+.note{color:var(--dim);font-size:12.8px;margin:8px 0}
+ul{margin:6px 0 4px 18px;padding:0} li{margin:6px 0}
 li b{color:var(--acc)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:980px){.grid2{grid-template-columns:1fr}}
-.src{font-size:12px;color:var(--dim);border-left:2px solid var(--line);padding-left:11px;margin:9px 0}
-.pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:10px;font-size:12.5px;color:var(--dim)}
-code{background:var(--panel2);padding:1.5px 5px;border-radius:4px;font-family:var(--mono);font-size:11.5px}
-.loading{text-align:center;padding:70px;color:var(--dim);font-size:15px}
-.stat{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+code{background:var(--panel3);padding:1.5px 6px;border-radius:5px;font-family:var(--mono);font-size:12px}
+.pill{display:inline-block;padding:2.5px 9px;border-radius:20px;font-size:11px;font-weight:650;white-space:nowrap}
+.p-good{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
+.p-warn{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.p-bad{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+.p-dim{background:color-mix(in srgb,var(--dim) 16%,transparent);color:var(--dim)}
+.p-acc{background:color-mix(in srgb,var(--acc) 15%,transparent);color:var(--acc)}
+.p-vio{background:color-mix(in srgb,var(--vio) 16%,transparent);color:var(--vio)}
+
+.banner{background:linear-gradient(170deg,var(--panel),var(--bg2));border:1px solid var(--line);
+  border-left:3px solid var(--warn);border-radius:var(--r);padding:14px 17px;margin:16px 0;box-shadow:var(--sh)}
+.banner b{color:var(--warn)}
+details.banner summary{cursor:pointer;font-weight:700;color:var(--warn);list-style:none}
+details.banner summary::-webkit-details-marker{display:none}
+details.banner summary::before{content:'▸ ';transition:.2s}
+details.banner[open] summary::before{content:'▾ '}
+
+/* ---------- controls ---------- */
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.chip{background:var(--panel2);border:1px solid var(--line);color:var(--dim);padding:7px 13px;
+  border-radius:999px;cursor:pointer;font-size:12.8px;font-weight:600;transition:.15s;white-space:nowrap}
+.chip:hover{border-color:var(--acc);color:var(--ink);transform:translateY(-1px)}
+.chip.on{background:linear-gradient(140deg,var(--acc),var(--acc2));border-color:transparent;color:#04121c}
+.filters{display:flex;gap:13px;flex-wrap:wrap;align-items:flex-end}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.7px;font-weight:650}
+input,select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  padding:8px 10px;border-radius:9px;font-size:13.2px;font-family:inherit;transition:.15s}
+input:focus,select:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 18%,transparent)}
+input[type=range]{padding:0;width:150px;accent-color:var(--acc);border:0;background:none}
+input[type=number]{width:104px;font-family:var(--mono)}
+.search{width:270px}
+button{background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:8px 13px;
+  border-radius:9px;cursor:pointer;font-size:13px;font-weight:650;font-family:inherit;transition:.15s}
+button:hover{border-color:var(--acc);color:var(--acc)}
+button.on{background:color-mix(in srgb,var(--acc) 17%,transparent);border-color:var(--acc);color:var(--acc)}
+.seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--panel2)}
+.seg button{border:0;border-radius:0;border-right:1px solid var(--line);background:none}
+.seg button:last-child{border-right:0}
+.seg button.on{background:color-mix(in srgb,var(--acc) 17%,transparent);color:var(--acc)}
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0 10px}
+.count{font-size:13.5px;color:var(--dim)}
+.count b{color:var(--ink);font-size:15px}
+
+/* ---------- table ---------- */
+.tblwrap{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+table{width:100%;border-collapse:collapse;font-size:12.8px}
+th,td{padding:10px 11px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{position:sticky;top:0;background:var(--panel2);color:var(--dim);font-size:10.5px;
+  text-transform:uppercase;letter-spacing:.6px;cursor:pointer;user-select:none;z-index:2;white-space:nowrap;font-weight:700}
+th:hover{color:var(--acc)}
+tbody tr{cursor:pointer;transition:background .12s}
+tbody tr:hover{background:color-mix(in srgb,var(--acc) 6%,transparent)}
+td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
+.sm{color:var(--dim);font-size:11.5px;line-height:1.4}
+.g{color:var(--good)} .r{color:var(--bad)} .w{color:var(--warn)} .d{color:var(--dim)}
+.star{background:none;border:0;padding:0 4px;cursor:pointer;font-size:15px;color:var(--dim2);line-height:1}
+.star.on{color:var(--warn)}
+
+/* ---------- cards ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:13px}
+.dcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px;
+  box-shadow:var(--sh);cursor:pointer;transition:.16s;position:relative;overflow:hidden}
+.dcard:hover{transform:translateY(-2px);border-color:var(--line2);box-shadow:0 2px 4px rgba(0,0,0,.3),0 14px 32px -14px rgba(0,0,0,.7)}
+.dcard .disc{position:absolute;top:0;right:0;background:linear-gradient(140deg,var(--good),#1f9c6c);
+  color:#03150e;font-weight:800;font-size:12.5px;padding:5px 11px;border-radius:0 var(--r) 0 10px;font-family:var(--mono)}
+.dcard .disc.mid{background:linear-gradient(140deg,var(--warn),#b8850f);color:#1a1203}
+.dcard .disc.low{background:var(--panel3);color:var(--dim)}
+.dcard h4{margin:0 6px 3px 0;font-size:14.5px;letter-spacing:-.2px;padding-right:64px}
+.dcard .loc{color:var(--dim);font-size:12px;margin-bottom:10px}
+.prices{display:flex;gap:16px;margin:10px 0 9px}
+.prices div{flex:1}
+.prices .k{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px}
+.prices .v{font-size:17px;font-weight:700;font-family:var(--mono);letter-spacing:-.4px}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+
+/* ---------- drawer ---------- */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);z-index:90;
+  opacity:0;pointer-events:none;transition:.2s}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--panel);
+  border-left:1px solid var(--line);z-index:100;transform:translateX(100%);transition:transform .24s cubic-bezier(.4,0,.2,1);
+  overflow-y:auto;padding:20px 24px 50px}
+.drawer.on{transform:none}
+.drawer h3{font-size:18px;color:var(--ink);margin:0 0 3px;letter-spacing:-.4px}
+.kv{display:grid;grid-template-columns:145px 1fr;gap:7px 14px;font-size:13px;margin:14px 0}
+.kv dt{color:var(--dim);font-size:12px}
+.kv dd{margin:0;word-break:break-word}
+.closex{position:absolute;top:16px;right:18px}
+.mini{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0}
+.mini div{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.mini .k{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px}
+.mini .v{font-size:16px;font-weight:700;font-family:var(--mono)}
+
+.pager{display:flex;gap:9px;align-items:center;justify-content:center;margin-top:16px;font-size:13px;color:var(--dim)}
+.empty{text-align:center;padding:56px 20px;color:var(--dim)}
+.empty .big{font-size:34px;margin-bottom:10px}
+.loading{text-align:center;padding:90px 20px;color:var(--dim);font-size:15px}
+.spin{width:26px;height:26px;border:2.5px solid var(--line2);border-top-color:var(--acc);
+  border-radius:50%;margin:0 auto 16px;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.view{display:none} .view.on{display:block}
+.src{font-size:12.6px;color:var(--dim);border-left:2px solid var(--line);padding-left:12px;margin:10px 0}
+.stat-row{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.8px}
 .dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+@media(max-width:760px){
+  .wrap{padding:0 13px 50px}.topin{padding:9px 13px;gap:9px}
+  .brand{font-size:14px;gap:7px}.brand .mark{width:23px;height:23px;flex-basis:23px;font-size:12px}
+  .nav{order:3;width:100%;margin-left:0;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;padding-bottom:1px}
+  .nav::-webkit-scrollbar{display:none}
+  .nav a{padding:5px 9px;font-size:12.3px;white-space:nowrap}
+  #theme{margin-left:auto}
+  h1{font-size:21px;letter-spacing:-.5px}.sub{font-size:13px}
+  .hero{padding:18px 0 4px}
+  .stats{grid-template-columns:1fr 1fr;gap:8px}
+  .stat{padding:11px 13px}.stat .n{font-size:20px}
+  .search{width:100%}.cards{grid-template-columns:1fr}
+  .kv{grid-template-columns:1fr;gap:3px 0}
+  .kv dt{margin-top:8px;font-weight:650}
+  .filters{gap:11px}.f{flex:1 1 44%}.f .seg{width:100%}.seg button{flex:1;padding:8px 6px;font-size:12.2px}
+  input[type=number]{width:100%}input[type=range]{width:100%}
+  .drawer{padding:18px 16px 46px}
+  .bar{gap:9px}.bar .count{width:100%}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Over-the-Counter Tax Deed Finder</h1>
-  <p class="sub">US property you can buy today without an auction — scraped daily, straight from state and county sources.
-     <span id="gen" class="d"></span></p>
 
-  <div id="boot" class="loading">Loading live inventory…</div>
+<div class="top"><div class="topin">
+  <div class="brand"><span class="mark">◈</span> Tax Deed Finder
+    <span class="livedot" title="auto-refreshed daily"></span></div>
+  <nav class="nav" id="nav">
+    <a class="on" data-v="browse">Browse</a>
+    <a data-v="saved">Shortlist <span id="savedN" class="d"></span></a>
+    <a data-v="model">Profit model</a>
+    <a data-v="play">Playbook</a>
+    <a data-v="risk">Risks</a>
+    <a data-v="src">Sources</a>
+  </nav>
+  <button class="iconbtn" id="theme" title="Toggle light / dark">◐</button>
+</div></div>
+
+<div class="wrap">
+  <div id="boot" class="loading"><div class="spin"></div>Loading live inventory…</div>
 
   <div id="app" style="display:none">
-  <div class="banner">
-    <b>What is real here, and what is a model.</b><br>
-    <b>Scraped facts:</b> every asking price, and — for Texas and Mississippi — the government's own published market
-    value. Discount % is computed from those two real numbers, nothing else.
-    <b>A model you control:</b> after-repair value, rehab cost and profit. No tax list publishes an ARV and nobody has
-    walked these properties, so those columns are a calculator driven by the assumptions on the Profit model tab.
-    <b>Only claimed where the source says it:</b> land vs. home, and whether repairs are needed. Mississippi flags
-    blighted structures and annotates vacant lots; Delaware County flags <code>GRD</code> = ground only; Texas
-    descriptions name mobile homes and improvements. Alabama's transcript says nothing about condition, so those
-    stay <span class="pill p-dim">unknown</span> rather than guessed.
-  </div>
 
-  <div class="kpis" id="kpis"></div>
+  <!-- ============ BROWSE ============ -->
+  <div class="view on" id="v-browse">
+    <div class="hero">
+      <h1>US property you can buy today, without an auction</h1>
+      <p class="sub">Over-the-counter tax deeds and tax-forfeited land, scraped every day straight from state and
+        county sources. <span id="gen" class="d"></span></p>
+      <div class="stats" id="stats"></div>
+    </div>
 
-  <div class="tabs">
-    <div class="tab on" data-v="deals">Verified discount deals</div>
-    <div class="tab" data-v="cheap">Cheapest inventory</div>
-    <div class="tab" data-v="model">Profit model</div>
-    <div class="tab" data-v="play">State playbook</div>
-    <div class="tab" data-v="risk">Risks &amp; due diligence</div>
-    <div class="tab" data-v="src">Sources &amp; feed status</div>
-  </div>
+    <details class="banner">
+      <summary>What is real here, and what is a model — read once</summary>
+      <div style="margin-top:9px">
+        <b>Scraped facts:</b> every asking price, and — for Texas and Mississippi — the government's own published
+        market value. Discount % comes from those two real numbers and nothing else.<br>
+        <b>A model you control:</b> after-repair value, rehab cost and profit. No tax list publishes an ARV and nobody
+        has walked these properties, so those are a calculator you drive from the Profit model tab.<br>
+        <b>Only claimed where the source says it:</b> land vs. home, and whether repairs are needed. Mississippi flags
+        blighted structures and annotates vacant lots; Delaware County flags <code>GRD</code> = ground only; Texas
+        descriptions name mobile homes. Alabama's transcript says nothing about condition, so those stay
+        <span class="pill p-dim">unknown</span> rather than guessed.<br>
+        <b>A <span class="pill p-warn">floor price</span> badge</b> means the number is a statutory minimum, not a
+        quote. Mississippi publishes the taxes owed; the state sets the real price and can require an appraisal.
+      </div>
+    </details>
 
-  <!-- ================= DEALS ================= -->
-  <div class="view on" id="v-deals">
+    <h2 style="margin-bottom:10px">Start here</h2>
+    <div class="presets" id="presets"></div>
+
     <div class="card">
-      <div class="controls">
+      <div class="filters">
         <div class="f"><label>Property type</label>
           <div class="seg" id="segType">
             <button class="on" data-b="all">All</button>
             <button data-b="land">Land lots</button>
-            <button data-b="building">Homes &amp; buildings</button>
+            <button data-b="building">Homes</button>
             <button data-b="unknown">Unknown</button>
-          </div>
-        </div>
+          </div></div>
         <div class="f"><label>Repairs</label>
           <div class="seg" id="segRep">
             <button class="on" data-b="all">All</button>
-            <button data-b="none">No repairs</button>
-            <button data-b="needed">Needs repairs</button>
-            <button data-b="unknown">Unknown</button>
-          </div>
-        </div>
-        <div class="f"><label>Min discount <b id="dLbl">19%</b></label>
-          <input type="range" id="disc" min="0" max="99" value="19" step="1"></div>
-        <div class="f"><label>Min price</label><input type="number" id="minP" value="0" step="25"></div>
-        <div class="f"><label>Max price</label><input type="number" id="maxP" value="250000" step="1000"></div>
-        <div class="f"><label>State</label><select id="dState"><option value="">All</option></select></div>
-        <div class="f"><label>County</label><select id="cty"><option value="">All</option></select></div>
-        <div class="f"><label>Search</label><input type="text" id="q" placeholder="address, legal, parcel"></div>
-        <div class="f"><label>&nbsp;</label><button id="minTog" class="on">Hide mineral rights</button></div>
-      </div>
-      <p class="note" id="dealNote"></p>
-      <p class="note">Seeing a $4 asking price at 99.9% off? That is a Mississippi
-        <span class="pill p-warn">floor price</span> — the accumulated taxes owed, which can be trivial. It is not a
-        quote from the state. Raise <b>Min price</b> above $0 to push those out of the way.</p>
-    </div>
-    <div class="tblwrap"><table id="tDeals"><thead></thead><tbody></tbody></table></div>
-    <div class="pager" id="pDeals"></div>
-    <p class="note">Every row links to the exact source record. <b>Verify there before you send money</b> — these lists
-      change weekly and parcels get redeemed or sold before the published file catches up.</p>
-  </div>
-
-  <!-- ================= CHEAP ================= -->
-  <div class="view" id="v-cheap">
-    <div class="card">
-      <p class="note" style="margin-top:0">Everything here has a real, scraped price but <b>no published market
-        value</b>, so there is no honest discount % — the value column is a blank you fill from the county in about two
-        minutes per parcel (steps on the State playbook tab). This is where the genuinely tiny numbers live:
-        <b id="under500"></b> parcels are priced under $500.</p>
-      <div class="controls">
-        <div class="f"><label>Property type</label>
-          <div class="seg" id="segType2">
-            <button class="on" data-b="all">All</button>
-            <button data-b="land">Land lots</button>
-            <button data-b="building">Homes &amp; buildings</button>
+            <button data-b="none">None needed</button>
+            <button data-b="needed">Needs work</button>
             <button data-b="unknown">Unknown</button>
           </div></div>
-        <div class="f"><label>State</label><select id="cState"><option value="">All</option></select></div>
-        <div class="f"><label>Max price</label><input type="number" id="cMaxP" value="1000" step="50"></div>
-        <div class="f"><label>County</label><select id="cCty"><option value="">All</option></select></div>
-        <div class="f"><label>Search</label><input type="text" id="cQ" placeholder="parcel, legal, address"></div>
+        <div class="f"><label>Pricing</label>
+          <div class="seg" id="segVal">
+            <button class="on" data-b="all">All</button>
+            <button data-b="valued">Has market value</button>
+            <button data-b="cheap">Price only</button>
+          </div></div>
+        <div class="f"><label>Min discount <b id="dLbl">0%</b></label>
+          <input type="range" id="disc" min="0" max="99" value="0" step="1"></div>
+        <div class="f"><label>Price from</label><input type="number" id="minP" value="0" step="25"></div>
+        <div class="f"><label>Price to</label><input type="number" id="maxP" value="500000" step="1000"></div>
+        <div class="f"><label>State</label><select id="fState"><option value="">All states</option></select></div>
+        <div class="f"><label>County</label><select id="fCty"><option value="">All counties</option></select></div>
+        <div class="f"><label>Search</label><input type="text" class="search" id="q" placeholder="address, county, parcel, legal…"></div>
+        <div class="f"><label>&nbsp;</label><button id="reset">Reset</button></div>
       </div>
-      <p class="note" id="cheapNote"></p>
     </div>
-    <div class="tblwrap"><table id="tCheap"><thead></thead><tbody></tbody></table></div>
-    <div class="pager" id="pCheap"></div>
+
+    <div class="bar">
+      <span class="count" id="count"></span>
+      <span style="flex:1"></span>
+      <div class="seg" id="segView">
+        <button class="on" data-b="cards">▦ Cards</button>
+        <button data-b="table">☰ Table</button>
+      </div>
+      <select id="sort" title="Sort">
+        <option value="d">Biggest discount</option>
+        <option value="profit">Best modelled profit</option>
+        <option value="p-asc">Cheapest first</option>
+        <option value="p-desc">Most expensive</option>
+        <option value="mv">Highest market value</option>
+        <option value="ac">Largest acreage</option>
+      </select>
+      <button id="csv">↓ Export CSV</button>
+    </div>
+
+    <div id="results"></div>
+    <div class="pager" id="pager"></div>
   </div>
 
-  <!-- ================= MODEL ================= -->
+  <!-- ============ SAVED ============ -->
+  <div class="view" id="v-saved">
+    <h2>Your shortlist</h2>
+    <p class="note">Starred parcels, kept in this browser. Nothing leaves your machine.</p>
+    <div class="bar"><span class="count" id="savedCount"></span><span style="flex:1"></span>
+      <button id="csvSaved">↓ Export CSV</button><button id="clearSaved">Clear all</button></div>
+    <div id="savedResults"></div>
+  </div>
+
+  <!-- ============ MODEL ============ -->
   <div class="view" id="v-model">
+    <h2>Profit model</h2>
     <div class="card">
-      <h3 style="margin-top:0">Assumptions — change these and the deal table recalculates instantly</h3>
-      <div class="controls">
+      <h3>Assumptions — change these and every profit number updates</h3>
+      <div class="filters">
         <div class="f"><label>ARV multiplier, buildings</label><input type="number" id="mArvS" value="1.30" step="0.05"></div>
         <div class="f"><label>ARV multiplier, land</label><input type="number" id="mArvL" value="1.00" step="0.05"></div>
         <div class="f"><label>Rehab, building ($)</label><input type="number" id="mRehabS" value="35000" step="1000"></div>
         <div class="f"><label>Clean-up, land ($)</label><input type="number" id="mRehabL" value="1500" step="250"></div>
         <div class="f"><label>Buy costs (% of price)</label><input type="number" id="mClose" value="8" step="1"></div>
         <div class="f"><label>Min buy costs ($)</label><input type="number" id="mCloseMin" value="1200" step="100"></div>
-        <div class="f"><label>Holding, 12 mo (% of ARV)</label><input type="number" id="mHold" value="3" step="0.5"></div>
+        <div class="f"><label>Holding 12mo (% of ARV)</label><input type="number" id="mHold" value="3" step="0.5"></div>
         <div class="f"><label>Selling costs (% of ARV)</label><input type="number" id="mSell" value="8" step="1"></div>
+        <div class="f"><label>&nbsp;</label><button id="mReset">Restore defaults</button></div>
       </div>
-      <p class="note">Defaults are ordinary US flip assumptions, not scraped facts. Buy costs cover deed, recording,
-        transfer tax and a quiet-title budget — on tax deeds quiet title is the line people forget, and it is usually
-        $1,500–$3,500 with an attorney.</p>
+      <p class="note">Ordinary US flip assumptions, not scraped facts. Buy costs cover deed, recording, transfer tax and
+        a quiet-title budget — on tax deeds quiet title is the line people forget, usually $1,500–$3,500.</p>
     </div>
-    <div class="card">
-      <h3 style="margin-top:0">How each column is computed</h3>
-      <ul>
-        <li><b>Discount %</b> = (published market value − asking price) ÷ published market value. Both numbers scraped.</li>
-        <li><b>Est. ARV</b> = published market value × the multiplier above. The government value is an as-is value at
-          a past date, so the multiplier covers both repair uplift and appreciation since then. Texas judgment dates in
-          this data run from 2005 to 2026 — on an old judgment the value is stale and probably <i>understates</i> today.</li>
-        <li><b>All-in</b> = price + buy costs + rehab + 12 months holding.</li>
-        <li><b>Net profit</b> = ARV × (1 − selling costs) − all-in.</li>
-        <li><b>70% rule</b> = ARV × 0.70 − rehab. Pay under this and you have room for surprises.</li>
-      </ul>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0">One caveat that matters more than the model</h3>
-      <p class="note">A <span class="pill p-warn">floor price</span> badge means the published number is a statutory
-      minimum, not a quote. Mississippi publishes the accumulated tax and fee total; the Secretary of State sets the
-      actual sale price and can require an appraisal on a valuable parcel. So a Mississippi row showing 99% off is
-      telling you the taxes owed are trivial next to the county's value — it is <i>not</i> telling you the state will
-      sell it for that. Texas minimum bids and the Pennsylvania $1,000 are real, quotable numbers.</p>
+    <div class="grid2">
+      <div class="card">
+        <h3>How each number is computed</h3>
+        <ul>
+          <li><b>Discount %</b> = (published market value − asking price) ÷ market value. Both scraped.</li>
+          <li><b>Est. ARV</b> = market value × the multiplier. The government value is as-is at a past date, so the
+            multiplier covers repair uplift <i>and</i> appreciation since then.</li>
+          <li><b>All-in</b> = price + buy costs + rehab + 12 months holding.</li>
+          <li><b>Net profit</b> = ARV × (1 − selling costs) − all-in.</li>
+          <li><b>70% rule</b> = ARV × 0.70 − rehab. Pay under it and you have room for surprises.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>The caveat that matters more than the model</h3>
+        <p class="note">A <span class="pill p-warn">floor price</span> row is showing a statutory minimum, not a quote.
+          Mississippi publishes accumulated taxes and fees; the Secretary of State sets the actual sale price and can
+          require an appraisal on a valuable parcel. So a Mississippi row at 99% off is telling you the taxes owed are
+          trivial next to the county's value — <i>not</i> that the state will sell it for that. Texas minimum bids and
+          the Pennsylvania $1,000 are real, quotable numbers.</p>
+      </div>
     </div>
   </div>
 
-  <!-- ================= PLAYBOOK ================= -->
+  <!-- ============ PLAYBOOK ============ -->
   <div class="view" id="v-play">
+    <h2>State playbook</h2>
     <div class="card">
-      <h3 style="margin-top:0">The one thing to fix in the brief</h3>
+      <h3>Set your discount filter honestly</h3>
       <p class="note">19% below market is far too loose a filter for over-the-counter tax property — it lets in almost
-      everything, and 19% is not a margin that survives tax-deed risk. In this scraped data <b id="pctOver19"></b> of
-      parcels with a published value already clear 19%, and <b id="pctOver50"></b> clear 50%. The scarce thing is not
-      the discount; it is a parcel that is cheap <i>and</i> has clean title, real access and a buyer. The slider starts
-      at your 19% — the deals worth your time start around 70%.</p>
+        everything, and 19% is not a margin that survives tax-deed risk. In this data <b id="pctOver19"></b> of parcels
+        with a published value already clear 19%, and <b id="pctOver50"></b> clear 50%. The scarce thing is not the
+        discount; it is a parcel that is cheap <i>and</i> has clean title, real access and a buyer. Deals worth your
+        time start around 70%.</p>
     </div>
-
     <div class="grid2">
       <div class="card">
-        <h3 style="margin-top:0">Mississippi — the best source in this dashboard</h3>
+        <h3>Mississippi — the best source here</h3>
         <ul>
-          <li><b>What you buy:</b> land the state took after tax forfeiture and now holds in inventory.</li>
-          <li><b>Why it is the best:</b> it is the only source that publishes the county market value, a street address,
-            acreage <i>and</i> a blighted-structure flag. You can screen it properly without leaving this page.</li>
-          <li><b>How:</b> apply to purchase online through the Secretary of State. No auction, no bidding war.</li>
-          <li><b>Price:</b> the accumulated taxes and fees are the floor. The SoS sets the final price and may require
-            an appraisal on a valuable parcel — treat the discount as indicative, then ring them for a real number.</li>
-          <li><b>Coverage:</b> <b id="msN"></b> parcels across <b id="msC"></b> counties, <b id="msBl"></b> flagged blighted.</li>
+          <li><b>What you buy:</b> land the state took after tax forfeiture and holds in inventory.</li>
+          <li><b>Why it wins:</b> the only source publishing county market value, a street address, acreage <i>and</i> a
+            blighted-structure flag. You can screen it properly without leaving this page.</li>
+          <li><b>How:</b> apply to purchase online through the Secretary of State. No auction.</li>
+          <li><b>Price:</b> accumulated taxes and fees are the floor; the SoS sets the final price and may require an
+            appraisal. Treat the discount as indicative, then call for a real number.</li>
+          <li><b>Coverage:</b> <b id="msN"></b> parcels, <b id="msC"></b> counties, <b id="msBl"></b> flagged blighted.</li>
         </ul>
       </div>
       <div class="card">
-        <h3 style="margin-top:0">Texas — where the discount is provable</h3>
+        <h3>Texas — where the discount is provable</h3>
         <ul>
-          <li><b>What you buy:</b> "struck-off" property. It went to auction, nobody bid, so the taxing units hold it
-            in trust and resell it privately.</li>
-          <li><b>Why the numbers are trustworthy:</b> Texas requires the judgment to state an appraised value, and the
-            lists print it beside the minimum bid. The bid is a real, quotable price.</li>
-          <li><b>The lever most people miss:</b> once redemption has expired you may offer <i>less</i> than the posted
-            minimum. Every taxing unit must approve, which takes 60–180 days — but that is where deep discounts happen.</li>
-          <li><b>Redemption:</b> 2 years for homestead and agricultural land, 6 months otherwise — and the owner redeems
-            at a 25–50% premium, so being redeemed is a paid outcome, not a loss.</li>
-          <li><b>Watch for:</b> mineral and working-interest rows. Cheap, bargain-looking, and there is no surface, no
-            house and no exit. Filtered out by default.</li>
+          <li><b>What you buy:</b> struck-off property. It went to auction, nobody bid, so the taxing units hold it in
+            trust and resell privately.</li>
+          <li><b>Why it is trustworthy:</b> Texas requires the judgment to state an appraised value, printed beside the
+            minimum bid. The bid is a real, quotable price.</li>
+          <li><b>The lever most people miss:</b> once redemption expires you may offer <i>less</i> than the posted
+            minimum. Every taxing unit must approve — 60–180 days — but that is where deep discounts happen.</li>
+          <li><b>Redemption:</b> 2 years homestead/agricultural, 6 months otherwise, and the owner redeems at a 25–50%
+            premium — so being redeemed is a paid outcome, not a loss.</li>
+          <li><b>Watch for:</b> mineral and working-interest rows. No surface, no house, no exit. Filtered out by default.</li>
         </ul>
       </div>
       <div class="card">
-        <h3 style="margin-top:0">Alabama — the cheapest entry in the country</h3>
+        <h3>Alabama — cheapest entry in the country</h3>
         <ul>
           <li><b>What you buy:</b> the state's tax certificate, or a tax deed once the state has held it 3+ years.</li>
           <li><b>How:</b> no auction, no competition. Pick parcels off the county transcript, submit to the Dept. of
             Revenue, pay. Any business day.</li>
-          <li><b>Price:</b> the amount bid at tax sale plus 12%/yr statutory interest and fees. Median base here is
-            <b id="alMed"></b>.</li>
-          <li><b>Redemption:</b> 3 years from the sale date. Buy certificates already past that window if you want the
-            property rather than the interest.</li>
+          <li><b>Price:</b> amount bid at tax sale plus 12%/yr statutory interest and fees. Median base <b id="alMed"></b>.</li>
+          <li><b>Redemption:</b> 3 years from the sale date.</li>
           <li><b>The catch:</b> no address, no value, no condition — a parcel ID and a legal description. That is
-            exactly why it stays cheap: it is unscreenable at scale, so almost nobody screens it.</li>
-          <li><b>Verify in ~2 min:</b> parcel ID → the county revenue commissioner's property search → appraised value,
-            improvement record, acreage. That one step turns a row here into a deal or a pass.</li>
+            exactly why it stays cheap: unscreenable at scale, so almost nobody screens it.</li>
+          <li><b>Verify in ~2 min:</b> parcel ID → county revenue commissioner's property search → appraised value,
+            improvement record, acreage.</li>
         </ul>
       </div>
       <div class="card">
-        <h3 style="margin-top:0">Pennsylvania — $1,000 flat, with an address</h3>
+        <h3>Pennsylvania — $1,000 flat, with an address</h3>
         <ul>
-          <li><b>What you buy:</b> repository property — it failed the upset sale <i>and</i> the judicial sale, so it
-            sells free and clear of delinquent taxes and liens. Genuinely rare in tax sales.</li>
-          <li><b>How:</b> bid form to the Tax Claim Bureau any time. Delaware County starts at <b>$1,000</b>, plus a
-            <b>$250</b> demolition/rehab fee added 1 Jan 2026.</li>
-          <li><b>The catch, and it is real:</b> <b id="paGrd"></b> of this list is flagged <code>GRD</code> — ground
-            only, much of it unbuildable slivers behind other houses. The few with a street number and no GRD flag are
-            the ones to look at.</li>
+          <li><b>What you buy:</b> repository property — failed the upset sale <i>and</i> the judicial sale, so it sells
+            free and clear of delinquent taxes and liens. Genuinely rare.</li>
+          <li><b>How:</b> bid form to the Tax Claim Bureau any time. Delaware County starts at <b>$1,000</b> plus a
+            <b>$250</b> demolition/rehab fee.</li>
+          <li><b>The catch:</b> <b id="paGrd"></b> of the list is <code>GRD</code> — ground only, much of it unbuildable
+            slivers behind other houses.</li>
           <li><b>Approval:</b> county, municipality and school district must all consent. Expect weeks.</li>
         </ul>
       </div>
       <div class="card">
-        <h3 style="margin-top:0">Land lots vs. homes — which to actually buy</h3>
+        <h3>Land lots vs. homes — which to actually buy</h3>
         <ul>
-          <li><b>Land, $200–$2,000:</b> no rehab, no holding risk, no eviction, no insurance. Margin is small per deal
-            but the failure mode is losing $500, not $50,000. Exit is owner-financed resale or the adjacent neighbour.</li>
-          <li><b>Homes at a deep discount:</b> far higher upside, far higher risk. You are buying sight-unseen with no
-            interior access, on a value that may be years stale, and you may inherit an occupant.</li>
-          <li><b>Blighted homes specifically:</b> Mississippi's blighted flag is a warning, not a bargain signal. A
-            blighted structure can carry municipal demolition liens that survive the sale, and the city may already
-            have a demolition order. Price the teardown, not the house.</li>
-          <li><b>The unglamorous reliable one:</b> a landlocked strip is worth little to the market and a lot to the
-            one neighbour it adjoins. Many repository slivers have exactly one rational buyer — a feature, at $1,000.</li>
+          <li><b>Land, $200–$2,000:</b> no rehab, no holding risk, no eviction, no insurance. Small margin per deal, but
+            the failure mode is losing $500, not $50,000.</li>
+          <li><b>Homes at a deep discount:</b> far higher upside, far higher risk. Sight-unseen, no interior access, a
+            value that may be years stale, and you may inherit an occupant.</li>
+          <li><b>Blighted homes:</b> the flag is a warning, not a bargain signal. Blight can carry municipal demolition
+            liens that survive the sale. Price the teardown, not the house.</li>
+          <li><b>The reliable unglamorous one:</b> a landlocked strip is worth little to the market and a lot to the one
+            neighbour it adjoins. Many slivers have exactly one rational buyer — a feature, at $1,000.</li>
         </ul>
       </div>
       <div class="card">
-        <h3 style="margin-top:0">Where the profit comes from</h3>
+        <h3>Where the profit comes from</h3>
         <ul>
-          <li><b>The spread</b> between a tax-derived price and a market value, captured by reselling.</li>
-          <li><b>Redemption interest.</b> In Alabama an unredeemed certificate pays 12%/yr; if it redeems you get your
-            money back plus interest. Losing the property is still a paid outcome.</li>
+          <li><b>The spread</b> between a tax-derived price and a market value, captured on resale.</li>
+          <li><b>Redemption interest.</b> Alabama pays 12%/yr; if it redeems you get your money back plus interest.</li>
           <li><b>Volume on cheap land.</b> At a $196 median, a hundred Alabama parcels costs less than one bad flip.</li>
-          <li><b>Being early.</b> These lists refresh faster than most buyers check them, which is the whole point of
-            re-scraping this page every day.</li>
+          <li><b>Being early.</b> These lists refresh faster than most buyers check them — the whole point of
+            re-scraping this page daily.</li>
         </ul>
       </div>
     </div>
   </div>
 
-  <!-- ================= RISK ================= -->
+  <!-- ============ RISK ============ -->
   <div class="view" id="v-risk">
-    <div class="card">
-      <h3 style="margin-top:0">What actually goes wrong</h3>
-      <ul>
-        <li><b>Redemption.</b> The former owner takes it back. Know the window in each state before you buy.</li>
-        <li><b>Title.</b> A tax deed is not insurable title. Budget a quiet-title action or a tax-deed-friendly title
-          company. This is the most common reason a cheap deal stops being cheap.</li>
-        <li><b>Stale values.</b> Government values are set at a past date — sometimes 20 years ago in the Texas data.
-          The discount is a starting point, not a fact about today's market.</li>
-        <li><b>Unbuildable or unreachable.</b> No road frontage, no utilities, wetlands, a 10-foot sliver, an undivided
-          fractional interest. Common in every one of these lists.</li>
-        <li><b>Surviving liens.</b> Tax sales wipe most liens, but IRS liens carry a 120-day federal redemption right,
-          and municipal, demolition and HOA claims can survive depending on state.</li>
-        <li><b>Occupancy.</b> Somebody may be living there. You inherit the eviction.</li>
-        <li><b>Post-judgment taxes.</b> Several Texas rows say "subject to post-judgment years 20XX forward" — those
-          unpaid years are yours on top of the bid.</li>
-        <li><b>Mobile homes.</b> Often titled separately from the land. You can buy the dirt and not the house.</li>
-      </ul>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0">Screening order that saves the most time</h3>
-      <ul>
-        <li><b>1.</b> Pull the parcel on the county GIS or appraisal district. Confirm it exists, has road frontage,
-          and check the improvement record for a structure.</li>
-        <li><b>2.</b> Look at it on satellite and street view. Thirty seconds kills most of the list.</li>
-        <li><b>3.</b> Read the current appraised value and last sale price. Compare with the asking price here.</li>
-        <li><b>4.</b> Confirm redemption has expired, or price the wait.</li>
-        <li><b>5.</b> Ask the county whether it is still available — lists lag reality by days to weeks.</li>
-        <li><b>6.</b> Only then run the profit model, and only then send a bid form.</li>
-      </ul>
-      <p class="note">Said plainly: this is a screening tool built from public records. It is not investment advice and
-        I am not a licensed advisor. Verify every number against the county before committing money.</p>
+    <h2>Risks &amp; due diligence</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3>What actually goes wrong</h3>
+        <ul>
+          <li><b>Redemption.</b> The former owner takes it back. Know the window before you buy.</li>
+          <li><b>Title.</b> A tax deed is not insurable title. Budget a quiet-title action. The most common reason a
+            cheap deal stops being cheap.</li>
+          <li><b>Stale values.</b> Government values are set at a past date — sometimes 20 years ago in the Texas data.</li>
+          <li><b>Unbuildable or unreachable.</b> No road frontage, no utilities, wetlands, a 10-foot sliver, an
+            undivided fractional interest. Common in every list here.</li>
+          <li><b>Surviving liens.</b> Tax sales wipe most liens, but IRS liens carry a 120-day federal redemption right,
+            and municipal, demolition and HOA claims can survive depending on state.</li>
+          <li><b>Occupancy.</b> Somebody may be living there. You inherit the eviction.</li>
+          <li><b>Post-judgment taxes.</b> Texas rows saying "subject to post-judgment years 20XX forward" mean those
+            unpaid years are yours on top of the bid.</li>
+          <li><b>Mobile homes.</b> Often titled separately from the land — you can buy the dirt and not the house.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Screening order that saves the most time</h3>
+        <ul>
+          <li><b>1.</b> Pull the parcel on the county GIS or appraisal district. Confirm it exists, has road frontage,
+            check the improvement record.</li>
+          <li><b>2.</b> Look at it on satellite and street view. Thirty seconds kills most of the list.</li>
+          <li><b>3.</b> Read the current appraised value and last sale price against the asking price here.</li>
+          <li><b>4.</b> Confirm redemption has expired, or price the wait.</li>
+          <li><b>5.</b> Ask the county whether it is still available — lists lag reality by days to weeks.</li>
+          <li><b>6.</b> Only then run the profit model, and only then send a bid form.</li>
+        </ul>
+        <p class="note">This is a screening tool built from public records. It is not investment advice and its author
+          is not a licensed advisor. Verify every number against the county before committing money.</p>
+      </div>
     </div>
   </div>
 
-  <!-- ================= SOURCES ================= -->
+  <!-- ============ SOURCES ============ -->
   <div class="view" id="v-src">
+    <h2>Sources &amp; feed status</h2>
     <div class="card">
-      <h3 style="margin-top:0">Feed status — last run</h3>
+      <h3>Last automated run</h3>
       <div id="feedStatus"></div>
-      <p class="note">Scrapers run automatically every day. If a source starts failing it shows up red here rather than
-        quietly disappearing from the counts.</p>
+      <p class="note">Scrapers run every day. A failing source shows red here rather than quietly disappearing from the
+        counts, and the pipeline refuses to publish a run that returns implausibly few rows.</p>
     </div>
     <div class="card">
-      <h3 style="margin-top:0">What is scraped</h3>
-      <div class="src"><b>Mississippi Secretary of State</b> — statewide tax-forfeited inventory, all counties, live
-        query. Publishes market value, address, acreage and a blighted flag.<br>
-        <a href="https://tflgis.sos.ms.gov/" target="_blank">tflgis.sos.ms.gov</a></div>
-      <div class="src"><b>Alabama Dept. of Revenue</b> — statewide county transcripts of tax-delinquent land available
-        for sale, all 68 transcripts.<br>
-        <a href="https://www.revenue.alabama.gov/property-tax/tax-delinquent-property-and-land-sales/" target="_blank">revenue.alabama.gov</a></div>
-      <div class="src"><b>Perdue Brandon Fielder Collins &amp; Mott</b> — county tax counsel for much of Texas; every
-        struck-off / resale list on their index. The only source publishing court-appraised value beside minimum bid.<br>
-        <a href="https://www.pbfcm.com/taxresale.html" target="_blank">pbfcm.com/taxresale.html</a></div>
-      <div class="src"><b>Delaware County PA Tax Claim Bureau</b> — repository list of unsold properties, with street
-        addresses and GRD flags.<br>
-        <a href="https://www.delcopa.gov/treasurer/repositorysale" target="_blank">delcopa.gov</a></div>
+      <h3>What is scraped</h3>
+      <div class="src"><b>Mississippi Secretary of State</b> — statewide tax-forfeited inventory, live query. Market
+        value, address, acreage, blighted flag.<br><a href="https://tflgis.sos.ms.gov/" target="_blank" rel="noopener">tflgis.sos.ms.gov</a></div>
+      <div class="src"><b>Alabama Dept. of Revenue</b> — all 68 county transcripts of tax-delinquent land available for
+        sale.<br><a href="https://www.revenue.alabama.gov/property-tax/tax-delinquent-property-and-land-sales/" target="_blank" rel="noopener">revenue.alabama.gov</a></div>
+      <div class="src"><b>Perdue Brandon Fielder Collins &amp; Mott</b> — county tax counsel for much of Texas. The only
+        source publishing court-appraised value beside minimum bid.<br><a href="https://www.pbfcm.com/taxresale.html" target="_blank" rel="noopener">pbfcm.com/taxresale.html</a></div>
+      <div class="src"><b>Delaware County PA Tax Claim Bureau</b> — repository list with street addresses and GRD
+        flags.<br><a href="https://www.delcopa.gov/treasurer/repositorysale" target="_blank" rel="noopener">delcopa.gov</a></div>
     </div>
     <div class="card">
-      <h3 style="margin-top:0">Tried and blocked — real programs an automated feed cannot reach</h3>
-      <p class="note">These are live OTC programs with genuine inventory. Each refused scripted access (403, or a
-        portal that only renders in a logged-in browser), so they cannot be part of a daily job. Worth checking by hand.</p>
+      <h3>Tried and blocked — real programs no automated feed can reach</h3>
+      <p class="note">Live OTC programs with genuine inventory that refuse scripted access. Worth checking by hand.</p>
       <ul>
-        <li><b>Florida — "Lands Available for Taxes."</b> County-held deeds that failed auction; after 90 days
-          <i>anyone</i> may buy at the opening bid. Structurally the best OTC deed program in the US. Most counties run
-          on RealTDM, which returns 403 to everything scripted, including a real browser session.
-          <a href="https://www.brevardclerk.us/lands-available" target="_blank">Brevard</a> ·
-          <a href="https://www.manateeclerk.com/departments/tax-deeds/lands-available-for-taxes/" target="_blank">Manatee</a> ·
-          <a href="https://www.occompt.com/158/Land-Available-For-Taxes" target="_blank">Orange</a></li>
-        <li><b>Arizona — state CP certificates.</b> Maricopa publishes a downloadable State CP list behind a Blazor app.
-          These are liens, not deeds.
-          <a href="https://treasurer.maricopa.gov/TaxAssignment/statecpdata" target="_blank">Maricopa Treasurer</a></li>
-        <li><b>Arkansas — Commissioner of State Lands post-auction sales.</b> Statewide; unsold parcels become available
-          30 days after auction, now through an online auction portal.
-          <a href="https://cosl.org/Home/PostAuction" target="_blank">cosl.org</a></li>
-        <li><b>Texas — other firms.</b> Linebarger (<a href="https://taxsales.lgbs.com/" target="_blank">taxsales.lgbs.com</a>,
-          refuses non-browser connections) and MVBA
-          (<a href="https://mvbalaw.com/tax-sales/trust-properties-for-sale/" target="_blank">trust properties</a> —
-          reachable, but only 3 lists and each in a different format, so not worth a fragile parser).</li>
+        <li><b>Florida — "Lands Available for Taxes."</b> County-held deeds that failed auction; after 90 days anyone
+          may buy at the opening bid. Structurally the best OTC deed program in the US. Most counties run on RealTDM,
+          which 403s everything scripted — including a real browser session.
+          <a href="https://www.brevardclerk.us/lands-available" target="_blank" rel="noopener">Brevard</a> ·
+          <a href="https://www.manateeclerk.com/departments/tax-deeds/lands-available-for-taxes/" target="_blank" rel="noopener">Manatee</a> ·
+          <a href="https://www.occompt.com/158/Land-Available-For-Taxes" target="_blank" rel="noopener">Orange</a></li>
+        <li><b>Arizona — state CP certificates.</b> Downloadable list behind a Blazor app. Liens, not deeds.
+          <a href="https://treasurer.maricopa.gov/TaxAssignment/statecpdata" target="_blank" rel="noopener">Maricopa Treasurer</a></li>
+        <li><b>Arkansas — Commissioner of State Lands post-auction sales.</b> Statewide; unsold parcels available 30
+          days after auction via an online portal. <a href="https://cosl.org/Home/PostAuction" target="_blank" rel="noopener">cosl.org</a></li>
+        <li><b>Texas — other firms.</b> Linebarger
+          (<a href="https://taxsales.lgbs.com/" target="_blank" rel="noopener">taxsales.lgbs.com</a>, refuses non-browser
+          connections) and MVBA (reachable, but 3 lists in 3 formats — not worth a fragile parser).</li>
         <li><b>More Pennsylvania repositories.</b> Delaware is 1 of ~60 counties. Northumberland and Clinton start at
-          $500/parcel, Monroe $800, Dauphin $2,000 — most publish only a phone number or a paywalled list.
-          <a href="https://www.westmorelandcountypa.gov/2722/Repository-List" target="_blank">Westmoreland</a> ·
-          <a href="https://www.clintoncountypa.gov/government/treasurer/repository-list-properties" target="_blank">Clinton</a></li>
+          $500, Monroe $800, Dauphin $2,000 — most publish only a phone number.
+          <a href="https://www.westmorelandcountypa.gov/2722/Repository-List" target="_blank" rel="noopener">Westmoreland</a> ·
+          <a href="https://www.clintoncountypa.gov/government/treasurer/repository-list-properties" target="_blank" rel="noopener">Clinton</a></li>
       </ul>
     </div>
   </div>
   </div>
 </div>
 
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer"></aside>
+
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>n==null?'—':'$'+Math.round(n).toLocaleString();
-const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let ROWS=[], META={}, T={};
-const STATE_NAME={AL:'Alabama',TX:'Texas',PA:'Pennsylvania',MS:'Mississippi'};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const STATE={AL:'Alabama',TX:'Texas',PA:'Pennsylvania',MS:'Mississippi'};
+let ROWS=[],META={},T={},PG=0,PGSZ=60,VIEWMODE='cards',SAVED=new Set();
 
+try{SAVED=new Set(JSON.parse(localStorage.getItem('td_saved')||'[]'))}catch(e){}
+const saveStore=()=>localStorage.setItem('td_saved',JSON.stringify([...SAVED]));
+
+/* ---------- theme ---------- */
+const setTheme=t=>{document.documentElement.dataset.theme=t;localStorage.setItem('td_theme',t)};
+setTheme(localStorage.getItem('td_theme')||'dark');
+$('#theme').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+
+/* ---------- model ---------- */
+const MDEF={mArvS:1.30,mArvL:1.00,mRehabS:35000,mRehabL:1500,mClose:8,mCloseMin:1200,mHold:3,mSell:8};
 const M=()=>({arvS:+$('#mArvS').value,arvL:+$('#mArvL').value,rehabS:+$('#mRehabS').value,
   rehabL:+$('#mRehabL').value,close:+$('#mClose').value/100,closeMin:+$('#mCloseMin').value,
   hold:+$('#mHold').value/100,sell:+$('#mSell').value/100});
-
 function model(r){
-  const m=M(), land=r.pt==='land'||r.pt==='mineral';
+  const m=M(),land=r.pt==='land'||r.pt==='mineral';
   const arv=r.mv==null?null:r.mv*(land?m.arvL:m.arvS);
   const rehab=land?m.rehabL:(r.rp==='needed'?m.rehabS*1.4:m.rehabS);
-  if(arv==null)return{arv:null,rehab,profit:null,roi:null,pass:null};
+  if(arv==null)return{arv:null,rehab,allin:null,profit:null,roi:null,pass:null};
   const buy=Math.max(r.p*m.close,m.closeMin);
   const allin=r.p+buy+rehab+arv*m.hold;
   const profit=arv*(1-m.sell)-allin;
-  return {arv,rehab,profit,roi:profit/allin*100,pass:r.p<=arv*0.70-rehab};
+  return{arv,rehab,allin,profit,roi:profit/allin*100,pass:r.p<=arv*0.70-rehab};
 }
 
-const sortState={deals:{k:'d',d:-1},cheap:{k:'p',d:1}};
-function sortRows(rows,st){
-  const {k,d}=st;
-  return rows.sort((a,b)=>{
-    let x,y;
-    if(k==='profit'||k==='roi'||k==='arv'){x=model(a)[k];y=model(b)[k];}
-    else if(k==='j'){x=T.jurisdiction[a.j];y=T.jurisdiction[b.j];}
-    else {x=a[k];y=b[k];}
-    if(x==null)return 1; if(y==null)return -1;
-    if(typeof x==='string')return d*x.localeCompare(y);
-    return d*(x-y);
+/* ---------- filters ---------- */
+const F={type:'all',rep:'all',val:'all',disc:0,min:0,max:500000,state:'',cty:'',q:'',sort:'d',preset:null};
+const PRESETS=[
+  {id:'land500', label:'🌱 Cheap land under $500', f:{type:'land',val:'all',max:500,min:0,disc:0,sort:'p-asc'}},
+  {id:'homes70', label:'🏠 Homes 70%+ below value', f:{type:'building',val:'valued',disc:70,max:500000,min:0,sort:'d'}},
+  {id:'profit',  label:'💰 Best modelled profit', f:{type:'all',val:'valued',disc:0,max:500000,min:100,sort:'profit'}},
+  {id:'ready',   label:'✅ No repairs needed', f:{rep:'none',type:'all',val:'all',disc:0,max:500000,min:0,sort:'p-asc'}},
+  {id:'fixer',   label:'🔨 Fixer-uppers', f:{rep:'needed',type:'all',val:'all',disc:0,max:500000,min:0,sort:'d'}},
+  {id:'acre',    label:'🌳 Acreage over 1 acre', f:{type:'all',val:'all',disc:0,max:500000,min:0,sort:'ac',acres:1}},
+  {id:'addr',    label:'📍 Has a street address', f:{type:'all',val:'all',disc:0,max:500000,min:0,sort:'d',addr:true}},
+];
+
+function applyPreset(p){
+  Object.assign(F,{type:'all',rep:'all',val:'all',disc:0,min:0,max:500000,acres:0,addr:false},p.f);
+  F.preset=p.id;
+  syncControls(); PG=0; render();
+}
+function syncControls(){
+  $$('#segType button').forEach(b=>b.classList.toggle('on',b.dataset.b===F.type));
+  $$('#segRep button').forEach(b=>b.classList.toggle('on',b.dataset.b===F.rep));
+  $$('#segVal button').forEach(b=>b.classList.toggle('on',b.dataset.b===F.val));
+  $('#disc').value=F.disc; $('#dLbl').textContent=F.disc+'%';
+  $('#minP').value=F.min; $('#maxP').value=F.max;
+  $('#fState').value=F.state; $('#fCty').value=F.cty; $('#q').value=F.q; $('#sort').value=F.sort;
+  $$('#presets .chip').forEach(c=>c.classList.toggle('on',c.dataset.id===F.preset));
+}
+function filtered(){
+  const q=F.q.trim().toLowerCase();
+  return ROWS.filter(r=>{
+    if(F.type!=='all'&&r.pt!==F.type)return false;
+    if(F.type==='all'&&r.pt==='mineral')return false;
+    if(F.rep!=='all'&&r.rp!==F.rep)return false;
+    if(F.val==='valued'&&!r.mv)return false;
+    if(F.val==='cheap'&&r.mv)return false;
+    if(F.disc>0&&(!r.mv||r.d<F.disc))return false;
+    if(r.p<F.min||r.p>F.max)return false;
+    if(F.state&&r.s!==F.state)return false;
+    if(F.cty&&T.jurisdiction[r.j]!==F.cty)return false;
+    if(F.acres&&!(r.ac>=F.acres))return false;
+    if(F.addr&&!(r.a&&r.a.length>6))return false;
+    if(q&&!((r.l+' '+r.a+' '+r.pa+' '+T.jurisdiction[r.j]).toLowerCase().includes(q)))return false;
+    return true;
   });
 }
+function sorted(rows){
+  const s=F.sort;
+  const key={d:r=>r.d,mv:r=>r.mv,ac:r=>r.ac,profit:r=>model(r).profit}[s];
+  if(s==='p-asc')return rows.sort((a,b)=>a.p-b.p);
+  if(s==='p-desc')return rows.sort((a,b)=>b.p-a.p);
+  return rows.sort((a,b)=>{const x=key(a),y=key(b);
+    if(x==null)return 1; if(y==null)return -1; return y-x;});
+}
 
-function typePill(r){
-  const p=r.pt==='land'?'<span class="pill p-good">land lot</span>'
+/* ---------- rendering ---------- */
+function tagsFor(r){
+  const t=r.pt==='land'?'<span class="pill p-good">land lot</span>'
     :r.pt==='building'?'<span class="pill p-acc">home / building</span>'
     :r.pt==='mineral'?'<span class="pill p-vio">mineral</span>'
     :'<span class="pill p-dim">type unknown</span>';
   const rep=r.rp==='none'?'<span class="pill p-good">no repairs</span>'
-    :r.rp==='needed'?'<span class="pill p-bad">needs repairs</span>'
-    :'<span class="pill p-dim">repairs unknown</span>';
-  const inf=r.c==='inferred'?' <span class="pill p-dim">inferred</span>':'';
-  return p+' '+rep+inf;
+    :r.rp==='needed'?'<span class="pill p-bad">needs work</span>':'';
+  const fl=r.q?'':'<span class="pill p-warn">floor price</span>';
+  const inf=r.c==='inferred'?'<span class="pill p-dim">inferred</span>':'';
+  return t+rep+fl+inf;
 }
-function mapLink(r){
-  const a=r.a&&r.a.length>6?r.a:null;
-  return a?` · <a href="https://www.google.com/maps/search/${encodeURIComponent(a)}" target="_blank">map</a>`:'';
-}
-function srcLink(r){
-  const u=T.source_url[r.su];
-  return `<a href="${esc(u)}${r.sp?'#page='+r.sp:''}" target="_blank">source${r.sp?' p.'+r.sp:''}</a>`;
-}
+const discClass=d=>d>=70?'':d>=30?' mid':' low';
 
-/* ---------- deals ---------- */
-let dType='all', dRep='all', hideMin=true, pgD=0;
-const PG=100;
-function dealsF(){
-  const dm=+$('#disc').value,mx=+$('#maxP').value,mn=+$('#minP').value,
-        st=$('#dState').value,cty=$('#cty').value,q=$('#q').value.trim().toLowerCase();
-  return ROWS.filter(r=>r.mv&&r.d>=dm&&r.p<=mx&&r.p>=mn
-    &&(dType==='all'||r.pt===dType)&&(dRep==='all'||r.rp===dRep)
-    &&(!hideMin||r.pt!=='mineral')&&(!st||r.s===st)
-    &&(!cty||T.jurisdiction[r.j]===cty)
-    &&(!q||(r.l+' '+r.a+' '+r.pa+' '+T.jurisdiction[r.j]).toLowerCase().includes(q)));
+function cardHTML(r){
+  const m=model(r);
+  return `<article class="dcard" data-i="${r.i}">
+    ${r.mv?`<div class="disc${discClass(r.d)}">${Math.min(r.d,99.9)}% off</div>`:''}
+    <h4>${esc(r.a&&r.a.length>4?r.a:(r.l||'—')).slice(0,70)}</h4>
+    <div class="loc">${esc(T.jurisdiction[r.j])}, ${STATE[r.s]||r.s}${r.ac?' · '+r.ac+' ac':''}</div>
+    <div class="prices">
+      <div><div class="k">Asking</div><div class="v">${fmt(r.p)}</div></div>
+      <div><div class="k">${r.mv?'Market value':'Value'}</div>
+           <div class="v ${r.mv?'':'d'}" style="${r.mv?'':'font-size:13px;font-weight:500'}">${r.mv?fmt(r.mv):'not published'}</div></div>
+    </div>
+    ${m.profit!=null?`<div class="sm">${r.q?'Modelled net profit':'<span class="w">Indicative</span> profit'}
+      <b class="${m.profit>0?'g':'r'}">${fmt(m.profit)}</b> · ROI ${Math.round(m.roi)}%
+      ${r.q?'':'<br><span class="d">based on a statutory floor, not a quoted price</span>'}</div>`:''}
+    <div class="tags">${tagsFor(r)}</div>
+  </article>`;
 }
-const DCOLS=[['s','State'],['j','County'],['pt','Type / repairs'],['p','Asking'],
-  ['mv','Market value'],['d','Disc %'],['arv','Est. ARV'],['profit','Net profit'],
-  ['roi','ROI %'],['a','Address / legal']];
-
-function renderDeals(){
-  const st=sortState.deals, rows=sortRows(dealsF(),st);
-  $('#tDeals thead').innerHTML='<tr>'+DCOLS.map(([k,l])=>
-    `<th data-k="${k}">${l}${st.k===k?(st.d>0?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
-  const pages=Math.max(1,Math.ceil(rows.length/PG)); pgD=Math.min(pgD,pages-1);
-  $('#tDeals tbody').innerHTML=rows.slice(pgD*PG,(pgD+1)*PG).map(r=>{
-    const m=model(r);
-    return `<tr>
-      <td>${r.s}</td>
-      <td>${esc(T.jurisdiction[r.j])}<div class="sm">${esc(r.u||'')}</div></td>
-      <td>${typePill(r)}<div class="sm">${esc(T.bucket_why[r.w])}</div></td>
-      <td class="num">${fmt(r.p)}${r.q?'':'<div class="sm" style="text-align:right"><span class="pill p-warn">floor price</span></div>'}</td>
-      <td class="num">${fmt(r.mv)}</td>
-      <td class="num ${r.d>=70?'g':r.d>=19?'w':'d'}">${Math.min(r.d,99.9)}%</td>
-      <td class="num">${fmt(m.arv)}</td>
-      <td class="num ${m.profit>0?'g':'r'}">${fmt(m.profit)}</td>
-      <td class="num ${m.roi>50?'g':m.roi>0?'w':'r'}">${m.roi==null?'—':Math.round(m.roi)+'%'}</td>
-      <td><div class="sm">${esc(r.a||r.l).slice(0,180)}</div>
-          <div class="sm"><code>${esc(r.pa)||'—'}</code>${r.ac?' · '+r.ac+' ac':''} · ${srcLink(r)}${mapLink(r)}
-          · ${m.pass?'<span class="pill p-good">70% rule pass</span>':'<span class="pill p-bad">70% fail</span>'}</div></td>
-    </tr>`;}).join('');
+const TCOLS=[['','',''],['s','State'],['j','County'],['a','Property'],['p','Asking'],['mv','Market value'],
+  ['d','Disc'],['profit','Net profit'],['pt','Type']];
+function tableHTML(rows){
+  return `<div class="tblwrap"><table><thead><tr>${
+    TCOLS.map(([k,l])=>`<th>${l}</th>`).join('')}</tr></thead><tbody>${
+    rows.map(r=>{const m=model(r);return `<tr data-i="${r.i}">
+      <td><button class="star ${SAVED.has(r.i)?'on':''}" data-star="${r.i}">${SAVED.has(r.i)?'★':'☆'}</button></td>
+      <td>${r.s}</td><td>${esc(T.jurisdiction[r.j])}</td>
+      <td><div>${esc(r.a&&r.a.length>4?r.a:r.l).slice(0,72)}</div>
+          <div class="sm"><code>${esc(r.pa)||'—'}</code>${r.ac?' · '+r.ac+' ac':''}</div></td>
+      <td class="num">${fmt(r.p)}${r.q?'':'<div class="sm">floor</div>'}</td>
+      <td class="num">${r.mv?fmt(r.mv):'<span class="d">—</span>'}</td>
+      <td class="num ${r.mv?(r.d>=70?'g':r.d>=19?'w':'d'):'d'}">${r.mv?Math.min(r.d,99.9)+'%':'—'}</td>
+      <td class="num ${m.profit>0?'g':m.profit==null?'d':'r'}">${m.profit==null?'—':fmt(m.profit)}</td>
+      <td>${tagsFor(r)}</td></tr>`}).join('')}</tbody></table></div>`;
+}
+function renderInto(el,rows,paged){
+  if(!rows.length){el.innerHTML=`<div class="empty"><div class="big">🔍</div>
+    <b>Nothing matches those filters.</b><div class="note">Try widening the price range or lowering the discount.</div></div>`;return}
+  const slice=paged?rows.slice(PG*PGSZ,(PG+1)*PGSZ):rows;
+  el.innerHTML=VIEWMODE==='cards'
+    ? `<div class="cards">${slice.map(cardHTML).join('')}</div>`
+    : tableHTML(slice);
+}
+function render(){
+  const rows=sorted(filtered());
+  const pages=Math.max(1,Math.ceil(rows.length/PGSZ)); PG=Math.min(PG,pages-1);
+  renderInto($('#results'),rows,true);
   const n=t=>rows.filter(r=>r.pt===t).length;
-  $('#dealNote').innerHTML=`<b>${rows.length.toLocaleString()}</b> match · <b>${n('land')}</b> land lots ·
-    <b>${n('building')}</b> homes &amp; buildings · <b>${n('unknown')}</b> type not stated by the source`;
-  $('#pDeals').innerHTML=pages>1?`<button id="d0">‹ prev</button> page ${pgD+1} / ${pages} <button id="d1">next ›</button>`:'';
-  if(pages>1){$('#d0').onclick=()=>{if(pgD>0){pgD--;renderDeals();}};$('#d1').onclick=()=>{if(pgD<pages-1){pgD++;renderDeals();}};}
-  $$('#tDeals thead th').forEach(th=>th.onclick=()=>{
-    const k=th.dataset.k; sortState.deals=st.k===k?{k,d:-st.d}:{k,d:-1}; pgD=0; renderDeals();});
+  $('#count').innerHTML=`<b>${rows.length.toLocaleString()}</b> parcels ·
+    ${n('land').toLocaleString()} land · ${n('building').toLocaleString()} homes ·
+    ${n('unknown').toLocaleString()} unclassified`;
+  $('#pager').innerHTML=pages>1
+    ?`<button id="pp">‹ Prev</button><span>Page ${PG+1} of ${pages}</span><button id="pn">Next ›</button>`:'';
+  if(pages>1){$('#pp').onclick=()=>{if(PG>0){PG--;render();scrollTo({top:document.querySelector('#results').offsetTop-90})}};
+              $('#pn').onclick=()=>{if(PG<pages-1){PG++;render();scrollTo({top:document.querySelector('#results').offsetTop-90})}};}
+  renderSaved();
+}
+function renderSaved(){
+  const rows=ROWS.filter(r=>SAVED.has(r.i));
+  $('#savedN').textContent=SAVED.size?`(${SAVED.size})`:'';
+  $('#savedCount').innerHTML=`<b>${rows.length}</b> saved`;
+  renderInto($('#savedResults'),rows,false);
 }
 
-/* ---------- cheap ---------- */
-let cType='all', pgC=0;
-function cheapF(){
-  const mx=+$('#cMaxP').value,s=$('#cState').value,cty=$('#cCty').value,
-        q=$('#cQ').value.trim().toLowerCase();
-  return ROWS.filter(r=>!r.mv&&r.p<=mx&&(!s||r.s===s)
-    &&(cType==='all'||r.pt===cType)&&(!cty||T.jurisdiction[r.j]===cty)
-    &&(!q||(r.l+' '+r.a+' '+r.pa).toLowerCase().includes(q)));
+/* ---------- drawer ---------- */
+function openDrawer(i){
+  const r=ROWS.find(x=>x.i===i); if(!r)return;
+  const m=model(r);
+  const maps=r.a&&r.a.length>6?`https://www.google.com/maps/search/${encodeURIComponent(r.a)}`:null;
+  $('#drawer').innerHTML=`
+    <button class="iconbtn closex" onclick="closeDrawer()">✕</button>
+    <h3>${esc(r.a&&r.a.length>4?r.a:'Parcel '+r.pa)}</h3>
+    <div class="note">${esc(T.jurisdiction[r.j])}, ${STATE[r.s]||r.s}</div>
+    <div class="tags" style="margin:10px 0">${tagsFor(r)}
+      <button class="chip ${SAVED.has(r.i)?'on':''}" onclick="toggleSave(${r.i});openDrawer(${r.i})">
+        ${SAVED.has(r.i)?'★ Saved':'☆ Save to shortlist'}</button></div>
+    <div class="mini">
+      <div><div class="k">Asking price</div><div class="v">${fmt(r.p)}</div></div>
+      <div><div class="k">Market value</div><div class="v">${r.mv?fmt(r.mv):'—'}</div></div>
+      ${r.mv?`<div><div class="k">Discount</div><div class="v g">${Math.min(r.d,99.9)}%</div></div>
+      <div><div class="k">Modelled profit</div><div class="v ${m.profit>0?'g':'r'}">${fmt(m.profit)}</div></div>`:''}
+    </div>
+    ${r.q?'':`<div class="banner" style="margin:14px 0"><b>This price is a floor, not a quote.</b>
+      <div class="note" style="margin:6px 0 0">${esc(T.price_label[r.pl])} The discount and every profit figure
+      below are therefore <b>indicative only</b> — they tell you the taxes owed are small next to the county's
+      value, not what the state will actually sell it for. Ask the agency for a real number before you plan on it.</div></div>`}
+    ${r.mv?`<div class="card" style="margin:14px 0"><h3>Modelled economics</h3>
+      <dl class="kv">
+        <dt>Est. ARV</dt><dd>${fmt(m.arv)}</dd>
+        <dt>Rehab budget</dt><dd>${fmt(m.rehab)}</dd>
+        <dt>All-in cost</dt><dd>${fmt(m.allin)}</dd>
+        <dt>Net profit</dt><dd class="${m.profit>0?'g':'r'}">${fmt(m.profit)} (${Math.round(m.roi)}% ROI)</dd>
+        <dt>70% rule</dt><dd>${m.pass?'<span class="pill p-good">pass</span>':'<span class="pill p-bad">fail</span>'}</dd>
+      </dl>
+      <p class="note" style="margin:0">These are model outputs, not scraped facts. Adjust them on the Profit model tab.</p></div>`:''}
+    <dl class="kv">
+      <dt>Parcel ID</dt><dd><code>${esc(r.pa)||'—'}</code></dd>
+      ${r.ac?`<dt>Acreage</dt><dd>${r.ac} acres</dd>`:''}
+      ${T.cls[r.cl]?`<dt>Tax class</dt><dd>${esc(T.cls[r.cl])}</dd>`:''}
+      <dt>Programme</dt><dd>${esc(T.program[r.pg])}</dd>
+      <dt>Price means</dt><dd>${esc(T.price_label[r.pl])}</dd>
+      <dt>Value means</dt><dd>${esc(T.value_label[r.vl])}</dd>
+      <dt>Type / repairs</dt><dd>${esc(T.bucket_why[r.w])}</dd>
+      <dt>Legal description</dt><dd class="sm">${esc(r.l)||'—'}</dd>
+      <dt>List updated</dt><dd>${esc(r.u)||'—'}</dd>
+      <dt>Source</dt><dd>${esc(T.source_name[r.sn])}<br>
+        <a href="${esc(T.source_url[r.su])}${r.sp?'#page='+r.sp:''}" target="_blank" rel="noopener">
+        open source record${r.sp?' (p.'+r.sp+')':''} ↗</a></dd>
+      ${maps?`<dt>Location</dt><dd><a href="${maps}" target="_blank" rel="noopener">view on Google Maps ↗</a></dd>`:''}
+    </dl>
+    <p class="note"><b>Before you send money:</b> confirm on the county's own system that this parcel is still
+    available, that redemption has expired, and what the county's current appraised value is.</p>`;
+  $('#drawer').classList.add('on'); $('#scrim').classList.add('on');
 }
-const CCOLS=[['s','State'],['j','County'],['p','Asking'],['pt','Type / repairs'],
-  ['pa','Parcel ID'],['a','Address / legal']];
-function renderCheap(){
-  const st=sortState.cheap, rows=sortRows(cheapF(),st);
-  $('#tCheap thead').innerHTML='<tr>'+CCOLS.map(([k,l])=>
-    `<th data-k="${k}">${l}${st.k===k?(st.d>0?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
-  const pages=Math.max(1,Math.ceil(rows.length/PG)); pgC=Math.min(pgC,pages-1);
-  $('#tCheap tbody').innerHTML=rows.slice(pgC*PG,(pgC+1)*PG).map(r=>`<tr>
-      <td>${r.s}<div class="sm">${esc(T.program[r.pg]).slice(0,60)}</div></td>
-      <td>${esc(T.jurisdiction[r.j])}</td>
-      <td class="num">${fmt(r.p)}<div class="sm" style="text-align:right">${esc(T.price_label[r.pl]).slice(0,58)}</div></td>
-      <td>${typePill(r)}<div class="sm">${esc(T.bucket_why[r.w])}</div></td>
-      <td><code>${esc(r.pa)}</code>${T.cls[r.cl]?`<div class="sm">${esc(T.cls[r.cl])}</div>`:''}</td>
-      <td><div class="sm">${esc(r.a||r.l).slice(0,170)}</div>
-          <div class="sm">${srcLink(r)}${mapLink(r)} · market value not published — verify at the county</div></td>
-    </tr>`).join('');
-  $('#cheapNote').innerHTML=`<b>${rows.length.toLocaleString()}</b> parcels match.`;
-  $('#pCheap').innerHTML=pages>1?`<button id="c0">‹ prev</button> page ${pgC+1} / ${pages} <button id="c1">next ›</button>`:'';
-  if(pages>1){$('#c0').onclick=()=>{if(pgC>0){pgC--;renderCheap();}};$('#c1').onclick=()=>{if(pgC<pages-1){pgC++;renderCheap();}};}
-  $$('#tCheap thead th').forEach(th=>th.onclick=()=>{
-    const k=th.dataset.k; sortState.cheap=st.k===k?{k,d:-st.d}:{k,d:1}; pgC=0; renderCheap();});
-}
+function closeDrawer(){$('#drawer').classList.remove('on');$('#scrim').classList.remove('on')}
+function toggleSave(i){SAVED.has(i)?SAVED.delete(i):SAVED.add(i);saveStore();render()}
+$('#scrim').onclick=closeDrawer;
+addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
+document.addEventListener('click',e=>{
+  const s=e.target.closest('[data-star]');
+  if(s){e.stopPropagation();toggleSave(+s.dataset.star);return}
+  const el=e.target.closest('[data-i]');
+  if(el)openDrawer(+el.dataset.i);
+});
 
-/* ---------- boot ---------- */
-function kpis(){
+/* ---------- csv ---------- */
+function csv(rows,name){
+  const head=['state','county','asking','price_basis','market_value','discount_pct','type','repairs',
+              'acres','parcel','address','legal','source_url'];
+  const esc2=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const body=rows.map(r=>[STATE[r.s]||r.s,T.jurisdiction[r.j],r.p,r.q?'quoted price':'statutory floor',
+    r.mv??'',r.mv?r.d:'',r.pt,r.rp,r.ac??'',r.pa,r.a,r.l,T.source_url[r.su]].map(esc2).join(','));
+  const blob=new Blob([head.join(',')+'\n'+body.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+$('#csv').onclick=()=>csv(sorted(filtered()),'otc-tax-deeds.csv');
+$('#csvSaved').onclick=()=>csv(ROWS.filter(r=>SAVED.has(r.i)),'otc-shortlist.csv');
+$('#clearSaved').onclick=()=>{if(confirm('Clear your whole shortlist?')){SAVED.clear();saveStore();render()}};
+
+/* ---------- wiring ---------- */
+$$('#nav a').forEach(a=>a.onclick=()=>{
+  $$('#nav a').forEach(x=>x.classList.remove('on')); a.classList.add('on');
+  $$('.view').forEach(v=>v.classList.remove('on')); $('#v-'+a.dataset.v).classList.add('on');
+  scrollTo({top:0});
+});
+const seg=(sel,k)=>$$(sel+' button').forEach(b=>b.onclick=()=>{
+  F[k]=b.dataset.b; F.preset=null; PG=0; syncControls(); render();});
+seg('#segType','type'); seg('#segRep','rep'); seg('#segVal','val');
+$$('#segView button').forEach(b=>b.onclick=()=>{
+  $$('#segView button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  VIEWMODE=b.dataset.b; render();});
+$('#disc').oninput=e=>{F.disc=+e.target.value;$('#dLbl').textContent=F.disc+'%';F.preset=null;PG=0;render()};
+$('#minP').oninput=e=>{F.min=+e.target.value||0;PG=0;render()};
+$('#maxP').oninput=e=>{F.max=+e.target.value||1e9;PG=0;render()};
+$('#fState').onchange=e=>{F.state=e.target.value;F.cty='';fillCounties();PG=0;render()};
+$('#fCty').onchange=e=>{F.cty=e.target.value;PG=0;render()};
+$('#sort').onchange=e=>{F.sort=e.target.value;PG=0;render()};
+let qt; $('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{F.q=e.target.value;PG=0;render()},180)};
+$('#reset').onclick=()=>{Object.assign(F,{type:'all',rep:'all',val:'all',disc:0,min:0,max:500000,
+  state:'',cty:'',q:'',sort:'d',preset:null,acres:0,addr:false});fillCounties();syncControls();PG=0;render()};
+Object.keys(MDEF).forEach(k=>$('#'+k).oninput=render);
+$('#mReset').onclick=()=>{Object.entries(MDEF).forEach(([k,v])=>$('#'+k).value=v);render()};
+
+function fillCounties(){
+  const list=[...new Set(ROWS.filter(r=>!F.state||r.s===F.state).map(r=>T.jurisdiction[r.j]))].sort();
+  $('#fCty').innerHTML='<option value="">All counties</option>'+
+    list.map(c=>`<option${c===F.cty?' selected':''}>${esc(c)}</option>`).join('');
+}
+function boot(d){
+  ROWS=d.rows; META=d.meta; T=d.tables;
+  $('#boot').style.display='none'; $('#app').style.display='block';
+
   const pub=ROWS.filter(r=>r.mv&&r.pt!=='mineral');
-  const d19=pub.filter(r=>r.d>=19), d70=pub.filter(r=>r.d>=70);
-  const cheap=ROWS.filter(r=>!r.mv);
-  const u500=ROWS.filter(r=>r.p<500).length;
-  const homes=ROWS.filter(r=>r.pt==='building').length;
-  const land=ROWS.filter(r=>r.pt==='land').length;
-  $('#kpis').innerHTML=[
-    [ROWS.length.toLocaleString(),'parcels live'],
-    [d19.length.toLocaleString(),'≥19% below value'],
-    [d70.length.toLocaleString(),'≥70% below value'],
-    [land.toLocaleString(),'land lots'],
-    [homes.toLocaleString(),'homes &amp; buildings'],
-    [u500.toLocaleString(),'under $500'],
-    [META.jurisdictions,'counties · '+Object.keys(META.by_state).length+' states'],
-  ].map(([n,l])=>`<div class="kpi"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+  const d70=pub.filter(r=>r.d>=70).length;
+  $('#stats').innerHTML=[
+    [ROWS.length.toLocaleString(),'parcels live',''],
+    [d70.toLocaleString(),'70%+ below value','hi'],
+    [ROWS.filter(r=>r.pt==='land').length.toLocaleString(),'land lots',''],
+    [ROWS.filter(r=>r.pt==='building').length.toLocaleString(),'homes &amp; buildings',''],
+    [ROWS.filter(r=>r.p<500).length.toLocaleString(),'under $500',''],
+    [ROWS.filter(r=>r.a&&r.a.length>6).length.toLocaleString(),'with an address',''],
+    [META.jurisdictions,'counties · '+Object.keys(META.by_state).length+' states',''],
+  ].map(([n,l,c])=>`<div class="stat ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+  $('#gen').textContent='Last refreshed '+META.generated+'.';
 
-  $('#under500').textContent=u500.toLocaleString();
-  $('#pctOver19').textContent=Math.round(d19.length/pub.length*100)+'%';
+  $('#presets').innerHTML=PRESETS.map(p=>
+    `<button class="chip" data-id="${p.id}">${p.label}</button>`).join('');
+  $$('#presets .chip').forEach(c=>c.onclick=()=>applyPreset(PRESETS.find(p=>p.id===c.dataset.id)));
+
+  const states=[...new Set(ROWS.map(r=>r.s))].sort();
+  $('#fState').innerHTML='<option value="">All states</option>'+
+    states.map(s=>`<option value="${s}">${STATE[s]||s}</option>`).join('');
+  fillCounties();
+
+  $('#pctOver19').textContent=Math.round(pub.filter(r=>r.d>=19).length/pub.length*100)+'%';
   $('#pctOver50').textContent=Math.round(pub.filter(r=>r.d>=50).length/pub.length*100)+'%';
-  const al=cheap.filter(r=>r.s==='AL').map(r=>r.p).sort((a,b)=>a-b);
+  const al=ROWS.filter(r=>r.s==='AL').map(r=>r.p).sort((a,b)=>a-b);
   $('#alMed').textContent=al.length?fmt(al[Math.floor(al.length/2)]):'—';
   const ms=ROWS.filter(r=>r.s==='MS');
   $('#msN').textContent=ms.length.toLocaleString();
@@ -575,48 +835,20 @@ function kpis(){
   $('#msBl').textContent=ms.filter(r=>r.rp==='needed').length;
   const pa=ROWS.filter(r=>r.s==='PA');
   $('#paGrd').textContent=pa.length?Math.round(pa.filter(r=>r.pt==='land').length/pa.length*100)+'%':'—';
-  $('#gen').textContent='· last refreshed '+META.generated;
 
   $('#feedStatus').innerHTML=(META.sources||[]).map(s=>{
     const ok=!s.error&&s.rows>0;
-    return `<div class="stat"><span class="dot" style="background:${ok?'var(--good)':'var(--bad)'}"></span>
+    return `<div class="stat-row"><span class="dot" style="background:${ok?'var(--good)':'var(--bad)'}"></span>
       <span style="flex:1">${esc(s.name)}</span>
       <span class="d">${s.rows.toLocaleString()} rows · ${s.seconds}s</span>
-      ${s.error?`<span class="pill p-bad">${esc(String(s.error)).slice(0,60)}</span>`:'<span class="pill p-good">ok</span>'}
-    </div>`;}).join('');
-}
-function fillSelects(){
-  const opts=(sel,vals)=>sel.innerHTML='<option value="">All</option>'+
-    vals.map(v=>`<option>${esc(v)}</option>`).join('');
-  const states=[...new Set(ROWS.map(r=>r.s))].sort();
-  $('#dState').innerHTML='<option value="">All</option>'+states.map(s=>`<option value="${s}">${STATE_NAME[s]||s}</option>`).join('');
-  $('#cState').innerHTML='<option value="">All</option>'+states.map(s=>`<option value="${s}">${STATE_NAME[s]||s}</option>`).join('');
-  opts($('#cty'),[...new Set(ROWS.filter(r=>r.mv).map(r=>T.jurisdiction[r.j]))].sort());
-  opts($('#cCty'),[...new Set(ROWS.filter(r=>!r.mv).map(r=>T.jurisdiction[r.j]))].sort());
-}
-$$('.tab').forEach(t=>t.onclick=()=>{
-  $$('.tab').forEach(x=>x.classList.remove('on')); t.classList.add('on');
-  $$('.view').forEach(v=>v.classList.remove('on')); $('#v-'+t.dataset.v).classList.add('on');});
-const seg=(sel,set)=>$$(sel+' button').forEach(b=>b.onclick=()=>{
-  $$(sel+' button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); set(b.dataset.b);});
-seg('#segType',v=>{dType=v;pgD=0;renderDeals();});
-seg('#segRep',v=>{dRep=v;pgD=0;renderDeals();});
-seg('#segType2',v=>{cType=v;pgC=0;renderCheap();});
-$('#minTog').onclick=function(){hideMin=!hideMin;this.classList.toggle('on',hideMin);
-  this.textContent=hideMin?'Hide mineral rights':'Showing mineral rights';pgD=0;renderDeals();};
-$('#disc').oninput=()=>{$('#dLbl').textContent=$('#disc').value+'%';pgD=0;renderDeals();};
-['#maxP','#minP','#cty','#q','#dState'].forEach(s=>$(s).oninput=()=>{pgD=0;renderDeals();});
-['#cMaxP','#cState','#cCty','#cQ'].forEach(s=>$(s).oninput=()=>{pgC=0;renderCheap();});
-['#mArvS','#mArvL','#mRehabS','#mRehabL','#mClose','#mCloseMin','#mHold','#mSell']
-  .forEach(s=>$(s).oninput=renderDeals);
+      ${s.error?`<span class="pill p-bad">${esc(String(s.error)).slice(0,50)}</span>`:'<span class="pill p-good">ok</span>'}
+    </div>`}).join('');
 
-fetch('data.json?t='+Date.now()).then(r=>r.json()).then(d=>{
-  ROWS=d.rows; META=d.meta; T=d.tables;
-  $('#boot').style.display='none'; $('#app').style.display='block';
-  kpis(); fillSelects(); renderDeals(); renderCheap();
-}).catch(e=>{
-  $('#boot').innerHTML='<b>Could not load data.json.</b><br>'+esc(String(e))+
-    '<br><span class="d">If you opened this file directly, serve it over http instead — browsers block fetch on file:// URLs.</span>';
+  syncControls(); render();
+}
+fetch('data.json?t='+Date.now()).then(r=>r.json()).then(boot).catch(e=>{
+  $('#boot').innerHTML=`<b>Could not load data.json.</b><div class="note">${esc(e)}<br>
+    If you opened this file directly, serve it over http — browsers block fetch on file:// URLs.</div>`;
 });
 </script>
 </body>
