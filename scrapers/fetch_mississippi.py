@@ -54,11 +54,18 @@ def classify_ms(r):
 def run():
     html = get(HOME, binary=False)
     if not html:
-        return [], 'Mississippi SoS: home page unreachable'
+        return [], ('The Mississippi SoS tax-forfeited map site is not responding. '
+                    'This is an outage on their side, not a parsing problem.')
+    if 'Runtime Error' in html[:4000] or '<title>Error' in html[:4000]:
+        return [], ('The Mississippi SoS tax-forfeited map site is returning a server '
+                    'error (ASP.NET "Runtime Error"). Their application is down — the '
+                    'access token it issues is the only way into the parcel layer, so '
+                    'nothing can be read until they fix it.')
     tk = re.search(r'id="tk"[^>]*value="([^"]+)"', html)
     mapid = re.search(r'id="mapid"[^>]*value="([^"]+)"', html)
     if not (tk and mapid):
-        return [], 'Mississippi SoS: could not read map token from the page'
+        return [], ('The Mississippi SoS page loaded but no longer exposes its map access '
+                    'token — either their site changed or it is mid-outage.')
     tk, mapid = tk.group(1), mapid.group(1)
 
     wm = get_json(f'{PORTAL}/content/items/{mapid}/data?f=json&token={tk}')

@@ -231,6 +231,8 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
       <div class="stats" id="stats"></div>
     </div>
 
+    <div id="staleBanner" style="display:none"></div>
+
     <details class="banner">
       <summary>What is real here, and what is a model — read once</summary>
       <div style="margin-top:9px">
@@ -628,7 +630,8 @@ function tagsFor(r){
     :r.rp==='needed'?'<span class="pill p-bad">needs work</span>':'';
   const fl=r.q?'':'<span class="pill p-warn">floor price</span>';
   const inf=r.c==='inferred'?'<span class="pill p-dim">inferred</span>':'';
-  return t+rep+fl+inf;
+  const st=r.ss?`<span class="pill p-warn" title="This source was unreachable on the last run; the row is carried forward from ${esc(r.ss)}">stale ${esc(r.ss)}</span>`:'';
+  return t+rep+fl+inf+st;
 }
 const discClass=d=>d>=70?'':d>=30?' mid':' low';
 
@@ -837,12 +840,29 @@ function boot(d){
   $('#paGrd').textContent=pa.length?Math.round(pa.filter(r=>r.pt==='land').length/pa.length*100)+'%':'—';
 
   $('#feedStatus').innerHTML=(META.sources||[]).map(s=>{
-    const ok=!s.error&&s.rows>0;
-    return `<div class="stat-row"><span class="dot" style="background:${ok?'var(--good)':'var(--bad)'}"></span>
-      <span style="flex:1">${esc(s.name)}</span>
+    const ok=!s.error&&s.rows>0, stale=!!s.stale;
+    const col=stale?'var(--warn)':(ok?'var(--good)':'var(--bad)');
+    return `<div class="stat-row"><span class="dot" style="background:${col}"></span>
+      <span style="flex:1">${esc(s.name)}
+        ${stale?`<div class="sm">source unreachable — showing data carried forward from ${esc(s.stale_since||'the last good run')}<br>${esc(String(s.error||'')).slice(0,120)}</div>`:''}</span>
       <span class="d">${s.rows.toLocaleString()} rows · ${s.seconds}s</span>
-      ${s.error?`<span class="pill p-bad">${esc(String(s.error)).slice(0,50)}</span>`:'<span class="pill p-good">ok</span>'}
+      ${stale?'<span class="pill p-warn">stale</span>'
+        :s.error?`<span class="pill p-bad">${esc(String(s.error)).slice(0,50)}</span>`
+        :'<span class="pill p-good">ok</span>'}
     </div>`}).join('');
+
+  const stale=(META.sources||[]).filter(s=>s.stale);
+  if(stale.length){
+    $('#staleBanner').style.display='';
+    $('#staleBanner').className='banner';
+    $('#staleBanner').innerHTML=`<b>⚠ ${stale.length===1?'One source is':stale.length+' sources are'} not refreshing right now.</b>
+      <div class="note" style="margin:7px 0 0">
+      ${stale.map(s=>`<b>${esc(s.name.split('—')[0].trim())}</b> was unreachable on the last run
+        (${esc(String(s.error||'').slice(0,110))}), so its ${s.rows.toLocaleString()} parcels are shown
+        <b>as they stood on ${esc(s.stale_since||'the last good run')}</b> rather than being dropped.`).join('<br>')}
+      <br>Those rows carry a <span class="pill p-warn">stale</span> badge. Everything else on this page refreshed
+      normally. Re-verify a stale parcel with the agency before acting on it — it may already be sold or redeemed.</div>`;
+  } else { $('#staleBanner').style.display='none'; }
 
   syncControls(); render();
 }

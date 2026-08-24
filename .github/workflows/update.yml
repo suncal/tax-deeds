@@ -51,6 +51,16 @@ jobs:
           # week-to-week churn passes but a collapsed feed does not.
           FLOORS = {'Mississippi': 5000, 'Alabama': 9000, 'Texas': 120, 'Pennsylvania': 150}
           bad = []
+          # Carried-forward (stale) sources keep their rows, so the floors below
+          # still apply. What must never happen is EVERY source going stale —
+          # that would republish a frozen snapshot as if it were a refresh.
+          stale = [s['name'] for s in m['sources'] if s.get('stale')]
+          if stale:
+              print('STALE (carried forward from the last good run):')
+              for x in stale:
+                  print('  -', x)
+          if len(stale) == len(m['sources']):
+              bad.append("every source is stale — nothing actually refreshed")
           if n < 15000:
               bad.append(f"total rows {n} < 15000")
           if m['with_value'] < 4000:
