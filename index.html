@@ -208,6 +208,7 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
     <span class="livedot" title="auto-refreshed daily"></span></div>
   <nav class="nav" id="nav">
     <a class="on" data-v="browse">Browse</a>
+    <a data-v="top">Top deals</a>
     <a data-v="saved">Shortlist <span id="savedN" class="d"></span></a>
     <a data-v="model">Profit model</a>
     <a data-v="play">Playbook</a>
@@ -293,7 +294,8 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
         <button data-b="table">☰ Table</button>
       </div>
       <select id="sort" title="Sort">
-        <option value="d">Biggest discount</option>
+        <option value="gap">Biggest $ value gap</option>
+        <option value="d">Biggest discount %</option>
         <option value="profit">Best modelled profit</option>
         <option value="p-asc">Cheapest first</option>
         <option value="p-desc">Most expensive</option>
@@ -305,6 +307,49 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
 
     <div id="results"></div>
     <div class="pager" id="pager"></div>
+  </div>
+
+  <!-- ============ TOP DEALS ============ -->
+  <div class="view" id="v-top">
+    <h2>The deepest opportunities in the feed</h2>
+    <div class="card">
+      <h3>Two ways to rank "deepest" — and why percentage alone misleads</h3>
+      <p class="note">Sorting by <b>discount %</b> puts a $4 tax floor on a $20,000 lot above a $105,000 price on a
+        $619,000 building. The percentage is bigger; the opportunity is not. So the primary ranking here is the
+        <b>dollar value gap</b> — market value minus asking price — which surfaces where the real money sits.
+        Both lists are below. Nothing here is a recommendation; it is the arithmetic on scraped numbers, and every
+        caveat on the rest of the site still applies.</p>
+      <div class="filters" style="margin-top:10px">
+        <div class="f"><label>Property type</label>
+          <div class="seg" id="segTopType">
+            <button class="on" data-b="all">All</button>
+            <button data-b="land">Land</button>
+            <button data-b="building">Homes &amp; buildings</button>
+          </div></div>
+        <div class="f"><label>Price basis</label>
+          <div class="seg" id="segTopQ">
+            <button class="on" data-b="all">All</button>
+            <button data-b="quoted">Quoted prices only</button>
+          </div></div>
+        <div class="f"><label>Show</label>
+          <select id="topN"><option value="25">Top 25</option><option value="50">Top 50</option>
+          <option value="100">Top 100</option></select></div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:22px">Biggest dollar value gap</h3>
+    <p class="note" style="margin-top:0">Market value minus asking price. This is where the largest absolute
+      spreads are — and, unsurprisingly, the largest amounts of work and risk.</p>
+    <div id="topGap"></div>
+
+    <h3 style="margin-top:26px">Deepest discount by percentage</h3>
+    <p class="note" style="margin-top:0">Asking price of $500 or more, so nominal statutory floors do not crowd out
+      the list.</p>
+    <div id="topPct"></div>
+
+    <h3 style="margin-top:26px">Best in each state and county</h3>
+    <p class="note" style="margin-top:0">The single largest value gap in every jurisdiction that publishes a value.</p>
+    <div id="topGeo"></div>
   </div>
 
   <!-- ============ SAVED ============ -->
@@ -507,7 +552,32 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
         flags.<br><a href="https://www.delcopa.gov/treasurer/repositorysale" target="_blank" rel="noopener">delcopa.gov</a></div>
     </div>
     <div class="card">
-      <h3>Tried and blocked — real programs no automated feed can reach</h3>
+      <h3>Why this is four states and not fifty — including foreclosures</h3>
+      <p class="note">This was tested, not assumed. Two vendors run a large share of US foreclosure and tax-deed
+        auctions, and both refuse automated access outright — not rate-limited, a flat <code>403</code>, including
+        from a real browser session:</p>
+      <ul>
+        <li><b>RealAuction</b> runs the Official Public Sheriff's Sale Website for <b>every Ohio county</b> under a
+          state contract, plus sheriff and tax sales in many other states. Ohio matters because state law
+          (ORC 2329.20) sets the opening bid at <b>two-thirds of the court-appraised value</b> — a published
+          appraisal beside a published minimum bid, exactly the structure this site is built on. Individual county
+          sheriff pages all redirect there.</li>
+        <li><b>RealTDM</b> runs Florida's tax-deed and Lands Available portals. Florida's "Lands Available for Taxes"
+          is structurally the best over-the-counter deed programme in the country — after 90 days anyone may buy
+          at the opening bid.</li>
+        <li><b>HUD HomeStore</b>, the national source for HUD-owned foreclosures, sits behind reCAPTCHA and was
+          showing an outage notice at the time of writing. <b>Fannie Mae HomePath</b> returns 403.
+          <b>Freddie Mac HomeSteps</b> exposes no listing feed.</li>
+        <li><b>Detroit Land Bank</b> publishes open GIS layers, but its for-sale inventory carries no price and no
+          value — only its 13,300 <i>completed</i> sales carry figures, which are comps, not opportunities.</li>
+        <li><b>GSA federal real estate</b> and <b>US Treasury / IRS auctions</b> are open but list only a handful of
+          properties nationwide at a time — a bookmark, not a feed.</li>
+      </ul>
+      <p class="note">The honest position: the four states here are the ones publishing both a price and a value in a
+        form a daily job can read. Everything else is paywalled through an aggregator, vendor-blocked, or publishes a
+        price with no value. The links below are the ones worth checking by hand.</p>
+
+      <h3 style="margin-top:20px">Tried and blocked — real programs no automated feed can reach</h3>
       <p class="note">Live OTC programs with genuine inventory that refuse scripted access. Worth checking by hand.</p>
       <ul>
         <li><b>Florida — "Lands Available for Taxes."</b> County-held deeds that failed auction; after 90 days anyone
@@ -613,7 +683,8 @@ function filtered(){
 }
 function sorted(rows){
   const s=F.sort;
-  const key={d:r=>r.d,mv:r=>r.mv,ac:r=>r.ac,profit:r=>model(r).profit}[s];
+  const key={d:r=>r.d,mv:r=>r.mv,ac:r=>r.ac,gap:r=>(r.mv?r.mv-r.p:null),
+             profit:r=>model(r).profit}[s];
   if(s==='p-asc')return rows.sort((a,b)=>a.p-b.p);
   if(s==='p-desc')return rows.sort((a,b)=>b.p-a.p);
   return rows.sort((a,b)=>{const x=key(a),y=key(b);
@@ -748,7 +819,7 @@ function openDrawer(i){
   $('#drawer').classList.add('on'); $('#scrim').classList.add('on');
 }
 function closeDrawer(){$('#drawer').classList.remove('on');$('#scrim').classList.remove('on')}
-function toggleSave(i){SAVED.has(i)?SAVED.delete(i):SAVED.add(i);saveStore();render()}
+function toggleSave(i){SAVED.has(i)?SAVED.delete(i):SAVED.add(i);saveStore();render();renderTop()}
 $('#scrim').onclick=closeDrawer;
 addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
 document.addEventListener('click',e=>{
@@ -757,6 +828,56 @@ document.addEventListener('click',e=>{
   const el=e.target.closest('[data-i]');
   if(el)openDrawer(+el.dataset.i);
 });
+
+/* ---------- top deals ---------- */
+let topType='all', topQ='all';
+
+function topRows(){
+  return ROWS.filter(r=>r.mv&&r.pt!=='mineral'
+    &&(topType==='all'||r.pt===topType)
+    &&(topQ==='all'||r.q));
+}
+function dealTable(rows, showGap){
+  if(!rows.length)return '<div class="empty"><div class="big">\u{1F50D}</div>Nothing matches that filter.</div>';
+  return `<div class="tblwrap"><table><thead><tr>
+    <th></th><th>State</th><th>County</th><th>Property</th><th>Asking</th><th>Market value</th>
+    <th>${showGap?'Value gap':'Discount'}</th><th>${showGap?'Disc':'Value gap'}</th><th>Basis</th></tr></thead>
+    <tbody>${rows.map(r=>{const gap=r.mv-r.p;return `<tr data-i="${r.i}">
+      <td><button class="star ${SAVED.has(r.i)?'on':''}" data-star="${r.i}">${SAVED.has(r.i)?'\u2605':'\u2606'}</button></td>
+      <td>${r.s}</td><td>${esc(T.jurisdiction[r.j])}</td>
+      <td><div>${esc((r.a&&r.a.length>4?r.a:r.l)||'-').slice(0,64)}</div>
+          <div class="sm">${tagsFor(r)}</div></td>
+      <td class="num">${fmt(r.p)}</td>
+      <td class="num">${fmt(r.mv)}</td>
+      <td class="num g">${showGap?fmt(gap):Math.min(r.d,99.9)+'%'}</td>
+      <td class="num d">${showGap?Math.min(r.d,99.9)+'%':fmt(gap)}</td>
+      <td>${r.q?'<span class="pill p-good">quoted</span>':'<span class="pill p-warn">floor price</span>'}</td>
+    </tr>`}).join('')}</tbody></table></div>`;
+}
+function renderTop(){
+  if(!ROWS.length)return;
+  const n=+$('#topN').value, rows=topRows();
+  $('#topGap').innerHTML=dealTable([...rows].sort((a,b)=>(b.mv-b.p)-(a.mv-a.p)).slice(0,n),true);
+  $('#topPct').innerHTML=dealTable(rows.filter(r=>r.p>=500).sort((a,b)=>b.d-a.d).slice(0,n),false);
+  const st={},cty={};
+  rows.forEach(r=>{const g=r.mv-r.p, k=r.s+'|'+r.j;
+    if(!st[r.s]||g>st[r.s].g)st[r.s]={g,r};
+    if(!cty[k]||g>cty[k].g)cty[k]={g,r};});
+  $('#topGeo').innerHTML=`
+    <div class="card"><h3 style="margin-top:0">Deepest gap in each state</h3>
+      ${dealTable(Object.values(st).sort((a,b)=>b.g-a.g).map(x=>x.r),true)}
+      <p class="note">Alabama and Pennsylvania are absent because neither publishes a market value \u2014
+        their parcels sit on the Browse tab with a price only.</p></div>
+    <div class="card"><h3 style="margin-top:0">Deepest gap in each county \u2014 top 30</h3>
+      ${dealTable(Object.values(cty).sort((a,b)=>b.g-a.g).slice(0,30).map(x=>x.r),true)}</div>`;
+}
+$$('#segTopType button').forEach(b=>b.onclick=()=>{
+  $$('#segTopType button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  topType=b.dataset.b;renderTop();});
+$$('#segTopQ button').forEach(b=>b.onclick=()=>{
+  $$('#segTopQ button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  topQ=b.dataset.b;renderTop();});
+$('#topN').onchange=renderTop;
 
 /* ---------- csv ---------- */
 function csv(rows,name){
@@ -864,7 +985,7 @@ function boot(d){
       normally. Re-verify a stale parcel with the agency before acting on it — it may already be sold or redeemed.</div>`;
   } else { $('#staleBanner').style.display='none'; }
 
-  syncControls(); render();
+  syncControls(); render(); renderTop();
 }
 fetch('data.json?t='+Date.now()).then(r=>r.json()).then(boot).catch(e=>{
   $('#boot').innerHTML=`<b>Could not load data.json.</b><div class="note">${esc(e)}<br>

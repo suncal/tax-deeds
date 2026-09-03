@@ -104,6 +104,22 @@ def main():
         print('FATAL: every source failed; refusing to overwrite data.json')
         return 1
 
+    # Mississippi lists a parcel once per outstanding tax certificate, so ~11% of
+    # its rows were exact repeats of the same property at the same price. Collapse
+    # them; a buyer cares about the parcel, not how many certificates are attached.
+    seen, deduped, dropped = set(), [], 0
+    for r in rows:
+        key = (r['state'], r.get('parcel', ''), r['price'], r.get('market_value'),
+               (r.get('address') or r.get('legal') or '')[:60])
+        if r.get('parcel') and key in seen:
+            dropped += 1
+            continue
+        seen.add(key)
+        deduped.append(r)
+    if dropped:
+        print(f'deduped {dropped:,} repeated parcels')
+    rows = deduped
+
     # ---- intern repeated strings -------------------------------------------
     tables = {'program': [], 'price_label': [], 'value_label': [], 'jurisdiction': [],
               'source_name': [], 'source_url': [], 'bucket_why': [], 'cls': []}
