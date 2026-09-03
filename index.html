@@ -552,7 +552,7 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
         flags.<br><a href="https://www.delcopa.gov/treasurer/repositorysale" target="_blank" rel="noopener">delcopa.gov</a></div>
     </div>
     <div class="card">
-      <h3>Why this is four states and not fifty — including foreclosures</h3>
+      <h3>Why it is six states and not fifty — including foreclosures</h3>
       <p class="note">This was tested, not assumed. Two vendors run a large share of US foreclosure and tax-deed
         auctions, and both refuse automated access outright — not rate-limited, a flat <code>403</code>, including
         from a real browser session:</p>
@@ -573,9 +573,18 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
         <li><b>GSA federal real estate</b> and <b>US Treasury / IRS auctions</b> are open but list only a handful of
           properties nationwide at a time — a bookmark, not a feed.</li>
       </ul>
-      <p class="note">The honest position: the four states here are the ones publishing both a price and a value in a
-        form a daily job can read. Everything else is paywalled through an aggregator, vendor-blocked, or publishes a
-        price with no value. The links below are the ones worth checking by hand.</p>
+      <p class="note">The honest position: the states here are the ones publishing a real price — and, where the
+        column exists, a value — in a form a daily job can read. Everything else is paywalled through an aggregator,
+        vendor-blocked, or publishes a price with no value. Two were added by scanning the national open-data
+        catalogues (Socrata and ArcGIS Hub) for live for-sale inventory rather than historical sales, which is how
+        <b>Kansas City</b> and <b>Albany County</b> turned up. That scan keeps running: the same method will add more
+        states as land banks publish.</p>
+      <p class="note"><b>One that was found and deliberately rejected:</b> Albany's published export is titled
+        "All Property" and includes about 1,070 parcels the Land Bank has already <i>sold</i>, still carrying their
+        old asking price and now owned by private individuals and churches. Listing those would have told you
+        somebody's home was buyable for $600. Only Land Bank-owned inventory is shown. New Orleans' adjudicated
+        layer and Baltimore's tax-lien layer were rejected too — the first publishes land values of $40 for a
+        quarter-acre lot, the second stops at 2023.</p>
 
       <h3 style="margin-top:20px">Tried and blocked — real programs no automated feed can reach</h3>
       <p class="note">Live OTC programs with genuine inventory that refuse scripted access. Worth checking by hand.</p>
@@ -610,7 +619,8 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>n==null?'—':'$'+Math.round(n).toLocaleString();
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const STATE={AL:'Alabama',TX:'Texas',PA:'Pennsylvania',MS:'Mississippi'};
+const STATE={AL:'Alabama',TX:'Texas',PA:'Pennsylvania',MS:'Mississippi',
+             MO:'Missouri',NY:'New York'};
 let ROWS=[],META={},T={},PG=0,PGSZ=60,VIEWMODE='cards',SAVED=new Set();
 
 try{SAVED=new Set(JSON.parse(localStorage.getItem('td_saved')||'[]'))}catch(e){}

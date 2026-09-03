@@ -15,6 +15,7 @@ import json, os, sys, datetime, traceback
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import fetch_alabama, fetch_texas, fetch_pennsylvania, fetch_mississippi
+import fetch_missouri, fetch_newyork
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data.json')
 
@@ -23,12 +24,15 @@ SOURCES = [
     ('Alabama Dept. of Revenue — 68 county transcripts', fetch_alabama),
     ('Texas struck-off resale lists (Perdue Brandon)', fetch_texas),
     ('Pennsylvania repository lists', fetch_pennsylvania),
+    ('Missouri — Land Bank of Kansas City', fetch_missouri),
+    ('New York — Albany County Land Bank', fetch_newyork),
 ]
 
 # Programs where the published number IS the price you can actually pay today.
 # Mississippi publishes only the accumulated tax/fee floor; the SoS sets the
 # final price and can require an appraisal, so MS discounts are indicative.
-DEFAULT_QUOTED = {'TX': True, 'PA': True, 'AL': False, 'MS': False}
+DEFAULT_QUOTED = {'TX': True, 'PA': True, 'MO': True, 'NY': True,
+                  'AL': False, 'MS': False}
 
 
 def load_previous():
@@ -66,7 +70,8 @@ def load_previous():
 
 
 # Which state each source owns, so a failure can be back-filled from the last run.
-OWNS = {'Mississippi': 'MS', 'Alabama': 'AL', 'Texas': 'TX', 'Pennsylvania': 'PA'}
+OWNS = {'Mississippi': 'MS', 'Alabama': 'AL', 'Texas': 'TX', 'Pennsylvania': 'PA',
+        'Missouri': 'MO', 'New York': 'NY'}
 
 
 def main():
